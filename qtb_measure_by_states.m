@@ -5,7 +5,7 @@ function [result] = qtb_measure_by_states(psi, n)
         global qtb_state qtb_n;      
         qtb_n = qtb_n + n_states;
              
-        probs = (abs(transpose(psi) * qtb_state).^2)';
+        probs = (abs(psi' * qtb_state).^2)';
         r = rand(1, n_states);
         result = r < probs; 
     else
