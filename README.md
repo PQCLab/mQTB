@@ -1,6 +1,6 @@
 # Quantum Tomography Benchmarking
 
-MATLAB library for benchmarking quantum tomography (QT) methods
+MATLAB library for benchmarking quantum tomography (QT) methods. **Detailed documentation is under development.**
 
 ## Getting Started
 
@@ -31,7 +31,7 @@ proto = qtb_proto('pauli_projectors', 2); % Generate measurement protocol for 2-
 qtb_analyze(...
     @pinvproj_estimator,... % Specify estimator handler
     @(j,n) static_proto(j,n,proto),... % Specify protocol handler
-    [2,2], {}, 'name', 'Projected pseudo-iversion', 'file', 'result.mat');
+    [2,2], {}, 'name', 'Projected pseudo-inversion', 'file', 'result.mat');
 ```
 
 To report the analysis results one should use the qtb_report function:
