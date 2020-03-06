@@ -29,7 +29,7 @@ The following code shows the basic example of running analysis for a 2-qubit tom
 ```
 proto = qtb_proto('pauli_projectors', 2); % Generate measurement protocol for 2-qubit state tomography
 qtb_analyze(...
-    @pinvproj_estimator,... % Specify estimator handler
+    @ppinv_estimator,... % Specify estimator handler
     @(j,n) static_proto(j,n,proto),... % Specify protocol handler
     [2,2], {}, 'name', 'Projected pseudo-inversion', 'file', 'result.mat');
 ```

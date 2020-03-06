@@ -89,7 +89,7 @@ if ~strcmp(opt.file,'none')
     end
 end
 
-% Prepare states for the tests
+% Prepare tests
 for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
     test = test_desc.(tcode);
@@ -104,82 +104,58 @@ for j_test = 1:length(test_codes)
     end
     rng(test.seed);
     test.hash = hash;
-    test.dms = cell(1,test.nstates);
-    for j_state = 1:test.nstates
-        test.dms{j_state} = qtb_state(test.type, prod(opt.dim), 'rank', test.rank, 'depol', test.depol);
-    end
-    test.fidelity = nan(test.nstates, length(test.nsample), test.nexp);
-    test.dm_est = cell(test.nstates, length(test.nsample), test.nexp);
-    test.nmeas = zeros(test.nstates, length(test.nsample), test.nexp);
-    test.time_proto = zeros(test.nstates, length(test.nsample), test.nexp);
-    test.time_est = nan(test.nstates, length(test.nsample), test.nexp);
-    test.bias = nan(1,test.nstates);
+    test.fidelity = nan(test.nexp, length(test.nsample));
+    test.nmeas = zeros(test.nexp, length(test.nsample));
+    test.time_proto = zeros(test.nexp, length(test.nsample));
+    test.time_est = nan(test.nexp, length(test.nsample));
+    test.bias = nan(test.nexp, 1);
     result.(tcode) = test;
 end
 
 % Perform tests
-disp('Performing tests');
 for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
     test = result.(tcode);
-    rng(test.seed+1);
-    fprintf('===> Running test %d/%d: %s\n', j_test, length(test_codes), test.name);
-    for j_state = 1:test.nstates
-        dm = test.dms{j_state};
-        fprintf('Test state: %d/%d\n', j_state, test.nstates);
-        
-        disp('Asymptotic analysis...');
-        if isnan(test.bias(j_state))
-            [data,meas] = conduct_experiment(dm,test.nsample(end)*10,opt,true);
+    fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, tcode);
+    fprintf('Progress: ');
+    h = qtb_print('');
+    
+    for j_exp = 1:test.nexp
+        rng(test.seed+j_exp);
+        dm = qtb_state(test.type, prod(opt.dim), 'rank', test.rank, 'depol', test.depol);
+        for j_ntot = 1:length(test.nsample)
+            if ~isnan(test.fidelity(j_exp,j_ntot)) % experiment loaded
+                continue;
+            end
+            ntot = test.nsample(j_ntot);
+            h = qtb_print(sprintf('experiment %d/%d, nsample = 1e%d', j_exp, test.nexp, round(log10(ntot))), h);
+            tic;
+            [data,meas] = conduct_experiment(dm,ntot,opt);
+            test.time_proto(j_exp,j_ntot) = toc;
+            tic;
             dm_est = qtb_call(opt.fun_est,data,meas,opt.dim);
-            test.bias(j_state) = max(0,1-qtb_fidelity(dm,dm_est));
+            test.time_est(j_exp,j_ntot) = toc;
+            test.fidelity(j_exp,j_ntot) = qtb_fidelity(dm, dm_est);
+            test.nmeas(j_exp,j_ntot) = length(meas);
+            test.dm_est{j_exp,j_ntot} = dm_est;
             result.(tcode) = test;
             if rsave
                 save(opt.file, 'result');
             end
-        else
-            disp('Results loaded');
         end
         
-        disp('Numerical experiments');
-        for j_ntot = 1:length(test.nsample)
-            ntot = test.nsample(j_ntot);
-            fprintf('Total sample size: 1e%d\n', round(log10(ntot)));
-            fids = permute(test.fidelity(j_state, j_ntot, :), [3,1,2]);
-            numloaded = sum(~isnan(fids));
-            if numloaded == length(fids) % all the experiments are loaded
-                disp('Results loaded');
-            else % need to perform some experiments
-                if numloaded > 0
-                    fprintf('Experiment no. (%d loaded) ', numloaded);
-                else
-                    fprintf('Experiment no. ');
-                end
-                h = qtb_print(sprintf('%d/%d' ,0, test.nexp));
-                for j_exp = 1:test.nexp
-                    if ~isnan(fids(j_exp)) % experiment loaded
-                        continue;
-                    end
-                    h = qtb_print(sprintf('%d/%d',j_exp,test.nexp), h);
-                    tic;
-                    [data,meas] = conduct_experiment(dm,ntot,opt);
-                    test.time_proto(j_state, j_ntot, j_exp) = toc;
-                    tic;
-                    dm_est = qtb_call(opt.fun_est,data,meas,opt.dim);
-                    test.time_est(j_state, j_ntot, j_exp) = toc;
-                    test.fidelity(j_state, j_ntot, j_exp) = qtb_fidelity(dm, dm_est);
-                    test.nmeas(j_state, j_ntot, j_exp) = length(meas);
-                    test.dm_est{j_state, j_ntot, j_exp} = dm_est;
-                    result.(tcode) = test;
-                    if rsave
-                        save(opt.file, 'result');
-                    end
-                end
-                fprintf('\n');
+        h = qtb_print(sprintf('experiment %d/%d, asymptotic', j_exp, test.nexp), h);
+        if isnan(test.bias(j_exp))
+            [data,meas] = conduct_experiment(dm,test.nsample(end)*10,opt,true);
+            dm_est = qtb_call(opt.fun_est,data,meas,opt.dim);
+            test.bias(j_exp) = max(0,1-qtb_fidelity(dm,dm_est));
+            result.(tcode) = test;
+            if rsave
+                save(opt.file, 'result');
             end
         end
-        disp('========================');
     end
+    qtb_print('done\n', h);
 end
 
 fprintf('All tests are finished!\n\n');

@@ -56,15 +56,13 @@ for j_test = 1:length(test_codes)
     test = result.(tcode);   
     report.(tcode).name = test.name;
     
-    dfid = 1-qtb_join_data(test.fidelity);
-    nmeas = qtb_join_data(test.nmeas);
-    time_proto = qtb_join_data(test.time_proto);
-    time_est = qtb_join_data(test.time_est);
-    
+    dfid = 1-test.fidelity';
+    nmeas = test.nmeas';
+    time_proto = test.time_proto';
+    time_est = test.time_est';
     n = test.nsample;
     
     fidbias = mean(test.bias);
-    
     res_num = get_resources(n,dfid,fidbias,zs,nmeas,time_proto,time_est,opt.quantile);
     res_text = cell(length(zs),4);
     for j1 = 1:size(res_text,1)
@@ -87,13 +85,8 @@ for j_test = 1:length(test_codes)
         'VariableNames', {'NSamples','Measurements','ProtocolTime','EstimationTime'},...
         'RowNames', fnames);
 
-    outsr = zeros(1,length(test.dms));
-    for j_state = 1:length(test.dms)
-        fids = permute(test.fidelity(j_state,:,:),[2,3,1]);
-        outs = isoutlier(fids,'quartiles',2);
-        outsr(j_state) = sum(outs,'all')/numel(outs);
-    end
-    report.(tcode).outliers = mean(outsr);
+    outs = isoutlier(dfid,'quartiles',2);
+    report.(tcode).outliers = sum(outs,'all');
     report.(tcode).bias = fidbias;
     
     if opt.plot

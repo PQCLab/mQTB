@@ -1,14 +1,14 @@
 function dm = qtb_state(type, dim, varargin)
 
+Dim = prod(dim);
 input = inputParser;
 addRequired(input, 'type');
 addRequired(input, 'dim');
-addParameter(input, 'rank', dim);
+addParameter(input, 'rank', Dim);
 addParameter(input, 'depol', nan);
 parse(input, type, dim, varargin{:});
 opt = input.Results;
 
-Dim = prod(dim);
 switch type
     case 'random'
         c = randn(Dim,opt.rank) + 1j*randn(Dim,opt.rank);
@@ -27,7 +27,11 @@ switch type
 end
 
 if ~isnan(opt.depol)
-    dm = (1-opt.depol)*dm + opt.depol*eye(dim)/dim;
+    p = opt.depol;
+    if length(opt.depol) > 1
+        p = rand*(p(2)-p(1)) + p(1);
+    end
+    dm = (1-p)*dm + p*eye(Dim)/Dim;
 end
 
 end

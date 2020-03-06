@@ -16,8 +16,7 @@ tests.rps.name = 'Random pure states';
 tests.rps.seed = 161;
 tests.rps.nsample = 10.^[2,3,4,5,6] * 10^max(0,N-3);
 tests.rps.type = 'random';
-tests.rps.nstates = 5;
-tests.rps.nexp = 200;
+tests.rps.nexp = 1000;
 tests.rps.rank = 1;
 tests.rps.depol = nan;
 
@@ -25,10 +24,9 @@ tests.drps.name = 'Depolarized random pure states';
 tests.drps.seed = 1312;
 tests.drps.nsample = 10.^[2,3,4,5,6] * 10^(N-1);
 tests.drps.type = 'random';
-tests.drps.nstates = 5;
-tests.drps.nexp = 200;
+tests.drps.nexp = 1000;
 tests.drps.rank = 1;
-tests.drps.depol = 0.01;
+tests.drps.depol = [0,0.1];
 
 end
 
