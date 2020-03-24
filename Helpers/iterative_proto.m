@@ -11,7 +11,6 @@ else
     start = meas{end}.iter_start;
     current = meas{end}.iter_current + 1;
     itlen = meas{end}.iter_length;
-    nsample = meas{end}.iter_nsample;
     
     if current > itlen
         newiter = true;
@@ -19,7 +18,6 @@ else
         start = length(meas) + 1;
         current = 1;
         itlen = nan;
-        nsample = nan;
     end
 end
 
@@ -31,7 +29,6 @@ if newiter
     measurement = measset{1};
     measurement.measset = measset;
     itlen = length(measset);
-    nsample = sum(cellfun(@(m) m.nshots, measset));
 else
     measurement = meas{start}.measset{current};
 end
@@ -40,7 +37,6 @@ measurement.iter = iter;
 measurement.iter_start = start;
 measurement.iter_current = current;
 measurement.iter_length = itlen;
-measurement.iter_nsample = nsample;
 
 end
 

@@ -4,7 +4,7 @@ K = size(psi,2);
 phis = cell(1,length(dim));
 ind = find(dim==min(dim),1);
 if K >= dim(ind)
-    error('Too many vectors. System could not be solved');
+    error('Too many vectors. System could not be resolved');
 end
 
 B = 1;

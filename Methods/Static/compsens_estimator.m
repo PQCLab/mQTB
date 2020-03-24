@@ -10,6 +10,7 @@ for j = 1:m
     Pauli(j,:) = reshape(meas{j}.observable.',1,[]);
     eta = eta + meas{j}.nshots/m;
 end
+data = cell2mat(data);
 data = data(:);
 
 switch method

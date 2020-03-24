@@ -11,7 +11,7 @@ if k == 1
     psi = zeros(dim,1);
     psi(1) = 1;
 else
-    grad = (data{end-1}(1)/sum(data{end-1}) - data{end}(1)/sum(data{end}))/(2*bet);
+    grad = (data{end-1}/meas{end-1}.nshots - data{end}/meas{end}.nshots)/(2*bet);
     psi = meas{end}.psi + alp*grad*meas{end}.delta;
     psi = psi / sqrt(psi'*psi);
 end
@@ -21,17 +21,15 @@ if n-j+1 < n_iter
 end
 
 measset = cell(1,2);
-measset{1} = get_meas(psi, bet, delta, floor(n_iter/2), dim);
-measset{2} = get_meas(psi,-bet, delta, ceil(n_iter/2), dim);
+measset{1} = get_meas(psi, bet, delta, floor(n_iter/2));
+measset{2} = get_meas(psi,-bet, delta, ceil(n_iter/2));
 
 end
 
-function measurement = get_meas(psi,coeff,delta,n,dim)
+function measurement = get_meas(psi,coeff,delta,n)
 psip = psi + coeff*delta;
 psip = psip / sqrt(psip'*psip);
-Proj = psip*psip';
-measurement.povm(:,:,1) = Proj;
-measurement.povm(:,:,2) = eye(dim)-Proj;
+measurement.operator(:,:,1) = psip*psip';
 measurement.nshots = n;
 measurement.psi = psi;
 measurement.delta = delta;

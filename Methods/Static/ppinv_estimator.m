@@ -1,7 +1,7 @@
 function dm = ppinv_estimator(data,meas,dim)
 %PPINV_ESTIMATOR Projected pseudoinverse estimator
 
-dim = prod(dim);
+Dim = prod(dim);
 
 M = cellfun(@(m) m.povm, meas, 'UniformOutput', false);
 M = cat(3, M{:});
@@ -10,7 +10,7 @@ B = reshape(permute(M,[3,2,1]), size(M,3), []);
 prob = cellfun(@(kj) kj(:)/sum(kj), data, 'UniformOutput', false);
 prob = vertcat(prob{:});
 
-dm = reshape(B\prob,dim,dim);
+dm = reshape(B\prob,Dim,Dim);
 dm = (dm+dm')/2;
 dm = dm/trace(dm);
 [U,D] = eig(dm);

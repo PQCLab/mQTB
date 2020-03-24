@@ -54,20 +54,25 @@ function result = qtb_analyze(fun_est, fun_proto, dim, varargin)
 %
 %Author: PQCLab, 2020
 %Website: https://github.com/PQCLab/QTB
-disp('Initialization');
 input = inputParser;
 addRequired(input, 'fun_est');
 addRequired(input, 'fun_proto');
 addRequired(input, 'dim');
 addOptional(input, 'tests', {});
+addParameter(input, 'mtype', 'povm');
 addParameter(input, 'name', 'Untitled QT-method');
-addParameter(input, 'file', '');
+addParameter(input, 'display', true);
+addParameter(input, 'file', 'none');
 addParameter(input, 'load', true);
 parse(input, fun_est, fun_proto, dim, varargin{:});
 opt = input.Results;
 
-result.dim = opt.dim;
+if opt.display
+    disp('Initialization');
+end
 result.name = opt.name;
+result.dim = opt.dim;
+result.lib = "matlab";
 
 % Generate test list
 test_desc = qtb_tests(opt.dim);
@@ -85,7 +90,9 @@ if ~strcmp(opt.file,'none')
         loaded = true;
         fprev = [opt.file, '.asv'];
         save(fprev, '-struct', 'rload');
-        fprintf('Results file loaded. Previous version available as %s\n', fprev);
+        if opt.display
+            fprintf('Results file loaded. Previous version available as %s\n', fprev);
+        end
     end
 end
 
@@ -99,97 +106,151 @@ for j_test = 1:length(test_codes)
             result.(tcode) = rload.(tcode);
             continue;
         else
-            fprintf('Failed to load test results for %s: fingerprint mismatch\n', tcode);
+            if opt.display
+                fprintf('Failed to load test results for %s: fingerprint mismatch\n', tcode);
+            end
         end
     end
-    rng(test.seed);
     test.hash = hash;
     test.fidelity = nan(test.nexp, length(test.nsample));
     test.nmeas = zeros(test.nexp, length(test.nsample));
     test.time_proto = zeros(test.nexp, length(test.nsample));
     test.time_est = nan(test.nexp, length(test.nsample));
+    test.sm_flag = true(test.nexp, 1);
     test.bias = nan(test.nexp, 1);
     result.(tcode) = test;
 end
 
 % Perform tests
+qrng = qtb_random();
 for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
     test = result.(tcode);
-    fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, tcode);
-    fprintf('Progress: ');
-    h = qtb_print('');
+    if opt.display
+        fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, tcode);
+        fprintf('Progress: ');
+        h = qtb_print('');
+    end
     
     for j_exp = 1:test.nexp
-        rng(test.seed+j_exp);
+        qrng.seed(test.seed+j_exp);
         dm = qtb_state(test.type, prod(opt.dim), 'rank', test.rank, 'depol', test.depol);
         for j_ntot = 1:length(test.nsample)
             if ~isnan(test.fidelity(j_exp,j_ntot)) % experiment loaded
                 continue;
             end
             ntot = test.nsample(j_ntot);
-            h = qtb_print(sprintf('experiment %d/%d, nsample = 1e%d', j_exp, test.nexp, round(log10(ntot))), h);
-            tic;
-            [data,meas] = conduct_experiment(dm,ntot,opt);
-            test.time_proto(j_exp,j_ntot) = toc;
+            if opt.display
+                h = qtb_print(sprintf('experiment %d/%d, nsamples = 1e%d', j_exp, test.nexp, round(log10(ntot))), h);
+            end
+            [data,meas,time_proto,sm_flag] = conduct_experiment(dm, ntot, opt.fun_proto, opt.dim, opt.mtype);
+            test.time_proto(j_exp,j_ntot) = time_proto;
+            test.sm_flag(j_exp) = test.sm_flag(j_exp) && sm_flag;
+            
             tic;
             dm_est = qtb_call(opt.fun_est,data,meas,opt.dim);
             test.time_est(j_exp,j_ntot) = toc;
+            [f,msg] = qtb_isdm(dm_est);
+            if ~f; error('QTB:NotDM', ['Estimator error: ', msg]); end
+            
             test.fidelity(j_exp,j_ntot) = qtb_fidelity(dm, dm_est);
             test.nmeas(j_exp,j_ntot) = length(meas);
-            test.dm_est{j_exp,j_ntot} = dm_est;
             result.(tcode) = test;
-            if rsave
-                save(opt.file, 'result');
-            end
+            if rsave; save(opt.file, 'result'); end
         end
         
-        h = qtb_print(sprintf('experiment %d/%d, asymptotic', j_exp, test.nexp), h);
         if isnan(test.bias(j_exp))
-            [data,meas] = conduct_experiment(dm,test.nsample(end)*10,opt,true);
-            dm_est = qtb_call(opt.fun_est,data,meas,opt.dim);
+            if opt.display
+                h = qtb_print(sprintf('experiment %d/%d, nsamples -> inf', j_exp, test.nexp), h);
+            end
+            [data,meas] = conduct_experiment(dm, test.nsample(end)*10, opt.fun_proto, opt.dim, opt.mtype, true);
+            dm_est = qtb_call(opt.fun_est, data, meas, opt.dim);
             test.bias(j_exp) = max(0,1-qtb_fidelity(dm,dm_est));
             result.(tcode) = test;
-            if rsave
-                save(opt.file, 'result');
-            end
+            if rsave; save(opt.file, 'result'); end
         end
     end
-    qtb_print('done\n', h);
+    if opt.display
+        qtb_print('done\n', h);
+    end
 end
 
-fprintf('All tests are finished!\n\n');
+if opt.display
+    fprintf('All tests are finished!\n\n');
+end
 
 end
 
-function [data,meas] = conduct_experiment(dm,ntot,opt,asymp)
-    if nargin < 4
+function [data,meas,time_proto,sm_flag] = conduct_experiment(dm, ntot, fun_proto, dim, mtype, asymp)
+    if nargin < 6
         asymp = false;
     end
-
     data = {};
     meas = {};
+    time_proto = 0;
+    sm_flag = true;
     jn = 1;
     while jn <= ntot
-        meas_curr = qtb_call(opt.fun_proto, jn, ntot, meas, data, opt.dim);
+        tic;
+        meas_curr = qtb_call(fun_proto, jn, ntot, meas, data, dim);
+        time_proto = time_proto + toc;
         if ~isfield(meas_curr,'nshots')
             meas_curr.nshots = 1;
         end
         if (jn + meas_curr.nshots - 1) > ntot
-            error('Number of measurements exceeds available sample size');
+            error('QTB:NShots', 'Number of measurements exceeds available sample size');
         end
-        prob = zeros(size(meas_curr.povm,3),1);
-        for k = 1:size(meas_curr.povm,3)
-            prob(k) = real(trace(dm*meas_curr.povm(:,:,k)));
-        end
-        prob = prob/sum(prob);
-        if asymp
-            clicks = prob*meas_curr.nshots;
-        else
-            clicks = qtb_sample(prob/sum(prob), meas_curr.nshots);
-        end
-        data{end+1} = clicks;
+        sm_flag = sm_flag && all(qtb_isprod(meas_curr.(mtype),dim));
+        data{end+1} = get_data(dm, meas_curr, mtype, asymp);
         meas{end+1} = meas_curr;
         jn = jn + meas_curr.nshots;
+    end
+end
+
+function data = get_data(dm, meas_curr, mtype, asymp)
+    tol = 1e-8;
+    switch mtype
+        case 'povm'
+            m = size(meas_curr.povm,3);
+            prob = zeros(m,1);
+            for k = 1:m
+                prob(k) = real(trace(dm*meas_curr.povm(:,:,k)));
+            end
+            extraop = false;
+            probsum = sum(prob);
+            if any(prob < -tol)
+                error('QTB:ProbNeg', 'Measurement operators are not valid: negative eigenvalues exist');
+            end
+            if probsum > 1+tol
+                error('QTB:ProbGT1', 'Measurement operators are not valid: total probability is greater than 1');
+            end
+            if probsum < 1-tol
+                extraop = true;
+                prob = [prob; 1-probsum];
+            end
+            
+            if asymp
+                clicks = prob*meas_curr.nshots;
+            else
+                clicks = qtb_sample(prob, meas_curr.nshots);
+            end
+            if extraop
+                clicks = clicks(1:(end-1));
+            end
+            data = clicks;
+        case 'operator'
+            meas_curr.povm =  meas_curr.operator;
+            clicks = get_data(dm, meas_curr, 'povm', asymp);
+            data = clicks(1);
+        case 'observable'
+            [U,D] = eig(meas_curr.observable);
+            meas_curr.povm = zeros(size(U,1),size(U,1),size(U,2));
+            for k = 1:size(U,2)
+                meas_curr.povm(:,:,k) = U(:,k)*U(:,k)';
+            end
+            clicks = get_data(dm, meas_curr, 'povm', asymp);
+            data = clicks'*diag(D)/meas_curr.nshots;
+        otherwise
+            error('Unknown measurement type');
     end
 end
