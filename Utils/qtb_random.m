@@ -43,5 +43,5 @@ end
 
 function x = mvnrnd_(mu, sigma)
     T = chol(sigma+1e-10);
-    x = T*randn_([length(mu),1]) + mu(:);
+    x = T'*randn_([length(mu),1]) + mu(:);
 end
