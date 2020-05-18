@@ -1,4 +1,10 @@
-function measurement = iterative_proto(fun_proto,j,n,meas,varargin)
+function fun_proto = iterative_proto(fun_measset, varargin)
+
+fun_proto = @(jn,ntot,meas,data,dim) handler(fun_measset,jn,ntot,meas,data,dim,varargin{:});
+
+end
+
+function measurement = handler(fun_proto,jn,ntot,meas,varargin)
 
 newiter = false;
 if isempty(meas)
@@ -22,7 +28,7 @@ else
 end
 
 if newiter
-    measset = fun_proto(iter,j,n,meas,varargin{:});
+    measset = qtb_tools.call(fun_proto,iter,jn,ntot,meas,varargin{:});
     if ~iscell(measset)
         measset = {measset};
     end

@@ -1,18 +1,27 @@
-function measurement = static_proto(j, n, proto, mtype, ratio)
+function fun_proto = static_proto(proto)
 
-if nargin < 4
-    mtype = 'povm';
+fun_proto = @(jn,ntot) handler(jn,ntot,proto);
+
 end
-if nargin < 5
-    ratio = ones(1,length(proto))/length(proto);
-end
-cdf = cumsum(ratio/sum(ratio));
-ind = find(j/n <= cdf, 1);
-measurement.(mtype) = proto{ind};
-if ind == length(cdf)
-    measurement.nshots = n - j + 1;
+
+function measurement = handler(jn, ntot, proto)
+
+mtype = proto.mtype;
+elems = proto.elems;
+if isfield(proto,'ratio')
+    ratio = proto.ratio;
 else
-    measurement.nshots = floor(cdf(ind)*n) - j + 1;
+    ratio = ones(1,length(elems))/length(elems);
+end
+
+cdf = cumsum(ratio/sum(ratio));
+ind = find((jn+1)/ntot <= cdf, 1);
+
+measurement.(mtype) = elems{ind};
+if ind == length(cdf)
+    measurement.nshots = ntot - jn;
+else
+    measurement.nshots = floor(cdf(ind)*ntot) - jn;
 end
 
 end

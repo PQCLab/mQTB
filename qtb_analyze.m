@@ -1,98 +1,55 @@
-function result = qtb_analyze(fun_est, fun_proto, dim, varargin)
-%QTB_ANALYZE Runs the tests to analyze the quantum tomography (QT) method.
-%The measurements are described in terms of POVM-operators.
-%
-%   result = qtb_abalyze(fun_est, fun_proto, dim) performs the all-tests
-%   analysis of the QT-method specified by function handlers `fun_est` and
-%   `fun_proto`. `dim` is the dimension array
-%
-%   result = qtb_abalyze(fun_est, fun_proto, dim, T) additionally specifies
-%   the tests list T (character cell array).
-%
-%   result = qtb_abalyze( ___ ,Name,Value)  specifies line properties using
-%   one or more Name,Value pair arguments. Available arguments:
-%       • Name (string) - specifies the method name. Default: 'Untitled
-%       QT-method'
-%       • File (string) - filename to save and load analysis result.
-%       Default: 'none'
-%       • Load (boolean) - reconstruct density matrix by the
-%       pseudo-inversion only. Default: true
-%
-%OUTPUT:
-%   result - structure array with analysis result. Fields:
-%       • result.dim - dimention array
-%       • result.name - method name
-%       • restult.(tcode) - structure array of the test `tcode` results
-%
-%%Formating
-%The dimension array describes the dimension of the each subsystem. For
-%example, `dim=2` stands for a single qubit system, `dim=[2,3]` -
-%qubit+qutrit system.
-%
-%The measurement array is a cell array of struct arrays describing the 
-%measurements: `meas{j}.povm(:,:,k)` is the k-th POVM operator of a j-th
-%measurement, `meas{j}.nshots` is the number of measurement tries.
-%
-%The data array is a cell array containing measurement results:
-%`data{j}(k)` is the number of outcomes for k-th POVM operator of j-th
-%measurement. For noiseless measurements `sum(data{j})=meas{j}.nshots`.
-%
-%Function handler of the estimator `fun_est` takes the data and
-%measurements arrays and the dimenstion array as the input and returns
-%density matrix:
-%```
-%dm = fun_est(data,meas,dim);
-%```
-%Function handler of the protocol `fun_proto` returns the description of
-%the measurements to be performed:
-%```
-%measurement = fun_proto(jn, ntot, meas, data, dim);
-%```
-%`jn` - current state sample number, `ntot` - total number of samples,
-%`meas` and `data` - measurement array of the measurements performed so far
-%and corresponding data array, `dim` - dimension array.
-%
-%Author: PQCLab, 2020
-%Website: https://github.com/PQCLab/QTB
+function result = qtb_analyze(fun_proto, fun_est, dim, varargin)
+%QTB_ANALYZE Runs the tests to analyze the quantum tomography method.
+%Documentation: https://github.com/PQCLab/mQTB/blob/master/Docs/qtb_analyze.md
+%Author: Boris Bantysh, 2020
 input = inputParser;
-addRequired(input, 'fun_est');
 addRequired(input, 'fun_proto');
+addRequired(input, 'fun_est');
 addRequired(input, 'dim');
-addOptional(input, 'tests', {});
+addOptional(input, 'tests', 'all', @(s)(ischar(s) || iscellstr(s)));
 addParameter(input, 'mtype', 'povm');
 addParameter(input, 'name', 'Untitled QT-method');
 addParameter(input, 'display', true);
 addParameter(input, 'file', 'none');
-addParameter(input, 'load', true);
-parse(input, fun_est, fun_proto, dim, varargin{:});
+addParameter(input, 'savefreq', 1);
+parse(input, fun_proto, fun_est, dim, varargin{:});
 opt = input.Results;
 
 if opt.display
     disp('Initialization');
 end
+
+% Load previous data
+rsave = false;
+if ~strcmp(opt.file,'none')
+    rsave = true;
+    if length(opt.file) < 5 || ~strcmpi(opt.file((end-3):end), '.mat')
+        opt.file = [opt.file, '.mat'];
+    end
+    if isfile(opt.file)
+        load(opt.file,'result');
+        if ~isequal(result.dim, opt.dim)
+            error('QTB:DimMismatch', 'Failed to load results file: dimensions mismatch');
+        end
+        fprev = [opt.file, '.asv'];
+        save(fprev, 'result');
+        if opt.display
+            fprintf('Results file loaded with tests:\n%s\nPrevious version available as %s\n', 'TODO', fprev);
+        end
+    end
+end
 result.name = opt.name;
 result.dim = opt.dim;
-result.lib = "matlab";
+result.lib = 'mQTB';
 
 % Generate test list
 test_desc = qtb_tests(opt.dim);
 test_codes = opt.tests;
-if isempty(test_codes)
-    test_codes = fieldnames(test_desc);
-end
-loaded = false;
-rsave = false;
-if ~strcmp(opt.file,'none')
-    rsave = true;
-    if opt.load && isfile(opt.file)
-        rload = load(opt.file,'result');
-        rload = rload.result;
-        loaded = true;
-        fprev = [opt.file, '.asv'];
-        save(fprev, '-struct', 'rload');
-        if opt.display
-            fprintf('Results file loaded. Previous version available as %s\n', fprev);
-        end
+if ischar(test_codes)
+    if strcmp(test_codes, 'all')
+        test_codes = fieldnames(test_desc);
+    else
+        test_codes = {test_codes};
     end
 end
 
@@ -101,13 +58,12 @@ for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
     test = test_desc.(tcode);
     hash = DataHash(test);
-    if loaded && isfield(rload,tcode)
-        if strcmp(rload.(tcode).hash, hash)
-            result.(tcode) = rload.(tcode);
+    if isfield(result,tcode)
+        if strcmp(result.(tcode).hash, hash)
             continue;
         else
             if opt.display
-                fprintf('Failed to load test results for %s: fingerprint mismatch\n', tcode);
+                warning('QTB:TestFingerprintMismatch', 'Failed to load results for test %s: fingerprint mismatch.\nThese results will be overwritten\n', test.code);
             end
         end
     end
@@ -116,62 +72,53 @@ for j_test = 1:length(test_codes)
     test.nmeas = zeros(test.nexp, length(test.nsample));
     test.time_proto = zeros(test.nexp, length(test.nsample));
     test.time_est = nan(test.nexp, length(test.nsample));
-    test.sm_flag = true(test.nexp, 1);
-    test.bias = nan(test.nexp, 1);
+    test.sm_flag = true;
     result.(tcode) = test;
 end
 
 % Perform tests
-qrng = qtb_random();
+stats = qtb_stats;
+tools = qtb_tools;
 for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
     test = result.(tcode);
     if opt.display
-        fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, tcode);
+        fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, test.code);
         fprintf('Progress: ');
-        h = qtb_print('');
+        h = tools.print('');
     end
     
     for j_exp = 1:test.nexp
-        qrng.seed(test.seed+j_exp);
-        dm = qtb_state(test.type, prod(opt.dim), 'rank', test.rank, 'depol', test.depol);
+        stats.seed(test.seed+j_exp);
+        dm = qtb_state(opt.dim, test.generator{:});
         for j_ntot = 1:length(test.nsample)
             if ~isnan(test.fidelity(j_exp,j_ntot)) % experiment loaded
                 continue;
             end
             ntot = test.nsample(j_ntot);
             if opt.display
-                h = qtb_print(sprintf('experiment %d/%d, nsamples = 1e%d', j_exp, test.nexp, round(log10(ntot))), h);
+                h = tools.print(sprintf('experiment %d/%d, nsamples = 1e%d', j_exp, test.nexp, round(log10(ntot))), h);
             end
             [data,meas,time_proto,sm_flag] = conduct_experiment(dm, ntot, opt.fun_proto, opt.dim, opt.mtype);
             test.time_proto(j_exp,j_ntot) = time_proto;
-            test.sm_flag(j_exp) = test.sm_flag(j_exp) && sm_flag;
+            test.sm_flag = test.sm_flag && sm_flag;
             
             tic;
-            dm_est = qtb_call(opt.fun_est,data,meas,opt.dim);
+            dm_est = tools.call(opt.fun_est,meas,data,opt.dim);
             test.time_est(j_exp,j_ntot) = toc;
-            [f,msg] = qtb_isdm(dm_est);
+            [f,msg] = tools.isdm(dm_est);
             if ~f; error('QTB:NotDM', ['Estimator error: ', msg]); end
             
-            test.fidelity(j_exp,j_ntot) = qtb_fidelity(dm, dm_est);
+            test.fidelity(j_exp,j_ntot) = tools.fidelity(dm, dm_est);
             test.nmeas(j_exp,j_ntot) = length(meas);
             result.(tcode) = test;
-            if rsave; save(opt.file, 'result'); end
         end
-        
-        if isnan(test.bias(j_exp))
-            if opt.display
-                h = qtb_print(sprintf('experiment %d/%d, nsamples -> inf', j_exp, test.nexp), h);
-            end
-            [data,meas] = conduct_experiment(dm, test.nsample(end)*10, opt.fun_proto, opt.dim, opt.mtype, true);
-            dm_est = qtb_call(opt.fun_est, data, meas, opt.dim);
-            test.bias(j_exp) = max(0,1-qtb_fidelity(dm,dm_est));
-            result.(tcode) = test;
-            if rsave; save(opt.file, 'result'); end
+        if rsave && (mod(j_exp, opt.savefreq) == 0 || j_exp == test.nexp)
+            save(opt.file, 'result');
         end
     end
     if opt.display
-        qtb_print('done\n', h);
+        tools.print('done\n', h);
     end
 end
 
@@ -189,18 +136,18 @@ function [data,meas,time_proto,sm_flag] = conduct_experiment(dm, ntot, fun_proto
     meas = {};
     time_proto = 0;
     sm_flag = true;
-    jn = 1;
-    while jn <= ntot
+    jn = 0;
+    while jn < ntot
         tic;
-        meas_curr = qtb_call(fun_proto, jn, ntot, meas, data, dim);
+        meas_curr = qtb_tools.call(fun_proto, jn, ntot, meas, data, dim);
         time_proto = time_proto + toc;
         if ~isfield(meas_curr,'nshots')
             meas_curr.nshots = 1;
         end
-        if (jn + meas_curr.nshots - 1) > ntot
+        if (jn + meas_curr.nshots) > ntot
             error('QTB:NShots', 'Number of measurements exceeds available sample size');
         end
-        sm_flag = sm_flag && all(qtb_isprod(meas_curr.(mtype),dim));
+        sm_flag = sm_flag && all(qtb_tools.isprod(meas_curr.(mtype),dim));
         data{end+1} = get_data(dm, meas_curr, mtype, asymp);
         meas{end+1} = meas_curr;
         jn = jn + meas_curr.nshots;
@@ -218,8 +165,12 @@ function data = get_data(dm, meas_curr, mtype, asymp)
             end
             extraop = false;
             probsum = sum(prob);
-            if any(prob < -tol)
-                error('QTB:ProbNeg', 'Measurement operators are not valid: negative eigenvalues exist');
+            if any(prob < 0)
+                if any(prob < -tol)
+                    error('QTB:ProbNeg', 'Measurement operators are not valid: negative eigenvalues exist');
+                end
+                prob(prob < 0) = 0;
+                probsum = sum(prob);
             end
             if probsum > 1+tol
                 error('QTB:ProbGT1', 'Measurement operators are not valid: total probability is greater than 1');
@@ -232,7 +183,7 @@ function data = get_data(dm, meas_curr, mtype, asymp)
             if asymp
                 clicks = prob*meas_curr.nshots;
             else
-                clicks = qtb_sample(prob, meas_curr.nshots);
+                clicks = qtb_stats.sample(prob, meas_curr.nshots);
             end
             if extraop
                 clicks = clicks(1:(end-1));

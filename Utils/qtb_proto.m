@@ -1,4 +1,4 @@
-function proto = qtb_proto(type, N)
+function proto = qtb_proto(type, nsub)
 %QTB_PROTO Returns measurement protocol of a specific type and number of
 %subsystems
 %
@@ -18,26 +18,26 @@ function proto = qtb_proto(type, N)
 %Author: PQCLab, 2020
 %Website: https://github.com/PQCLab/QTB
 switch type
-    case 'pauli_projectors'
-        proto = cell(1,3);
-        proto{1}(:,:,1) = [1 1; 1 1]/2;
-        proto{1}(:,:,2) = [1 -1; -1 1]/2;
-        proto{2}(:,:,1) = [1 -1j; 1j 1]/2;
-        proto{2}(:,:,2) = [1 1j; -1j 1]/2;
-        proto{3}(:,:,1) = [1 0; 0 0];
-        proto{3}(:,:,2) = [0 0; 0 1];
-    case 'pauli_observables'
-        proto = cell(1,4);
-        proto{1} = [1,0;0,1];
-        proto{2} = [0,1;1,0];
-        proto{3} = [0,-1j;1j,0];
-        proto{4} = [1,0;0,-1];
+    case 'pauli'
+        mtype = 'observable';
+        elems = cell(1,4);
+        elems{1} = [1,0;0,1];
+        elems{2} = [0,1;1,0];
+        elems{3} = [0,-1j;1j,0];
+        elems{4} = [1,0;0,-1];
+    case {'mub2', 'mub3', 'mub4', 'mub8'}
+        mtype = 'povm';
+        mub = load('mubs.mat', type);
+        mub = mub.(type);
+        elems = cellfun(@(u) qtb_tools.vec2povm(u), reshape(num2cell(mub,[1,2]),1,[]), 'UniformOutput', false);
     otherwise
         error('Protocol %s is undefined', type);
 end
-
-if nargin > 1 && N > 1
-    proto = qtb_proto_product(proto,N);
+if nargin > 1 && nsub > 1
+    elems = qtb_tools.listkronpower(elems, nsub);
 end
+
+proto.mtype = mtype;
+proto.elems = elems;
 
 end

@@ -1,189 +1,131 @@
-function report = qtb_report(result, varargin)
-%QTB_REPORT Generates a report of an analysis result
-%
-%   report = qtb_report(result) returns the report of an analysis result
-%   obtained by `qtb_report` function
-%
-%   report = qtb_report(result, T) returns the report for a desired test
-%   codes `T`
-%
-%   report = qtb_report( ___ ,Name,Value)  specifies line properties using
-%   one or more Name,Value pair arguments. Available arguments:
-%       • Quantile (float) - specifies the quantile for analysis. Default:
-%       0.95.
-%       • Export (string) - specifies the export format. Available formats:
-%       'html'. Default: 'none'.
-%       • File (string) - filename to export report. Default: 'none'.
-%       • Plot (boolean) - plot analysis result. Default: false.
-%
-%Author: PQCLab, 2020
-%Website: https://github.com/PQCLab/QTB
+function report = qtb_report(result, tcode, varargin)
+%QTB_REPORT Reports benchmarks of the QT method based on qtb_analyze raw output.
+%Documentation: https://github.com/PQCLab/mQTB/blob/master/Docs/qtb_report.md
+%Author: Boris Bantysh, 2020
 input = inputParser;
 addRequired(input, 'result');
-addOptional(input, 'tests', {});
-addParameter(input, 'quantile', 0.95);
-addParameter(input, 'export', 'none');
-addParameter(input, 'file', 'none');
+addRequired(input, 'tcode');
+addParameter(input, 'percentile', 95);
+addParameter(input, 'error_rates', [1e-1,1e-2,1e-3,1e-4]);
 addParameter(input, 'plot', false);
-parse(input, result, varargin{:});
+addParameter(input, 'export', 'none');
+parse(input, result, tcode, varargin{:});
 opt = input.Results;
-
-fnames = {'F = 90%';'F = 99%';'F = 99.9%';'F = 99.99%'};
-zs = [1,2,3,4];
-le_sign = char(8804);
-ge_sign = char(8805);
 
 if ischar(result)
     load(result,'result');
 end
 
-if isempty(opt.tests)
-    test_desc = qtb_tests(result.dim);
-    test_codes = fieldnames(test_desc);
-else
-    test_codes = opt.tests;
+if ~isfield(result,tcode)
+    error('QTB:NoResults', 'No results for test `%s`', tcode);
 end
+test = result.(tcode);
 
 report.name = result.name;
 report.dim = result.dim;
-report.quantile = opt.quantile;
-for j_test = 1:length(test_codes)
-    tcode = test_codes{j_test};
-    if ~isfield(result,tcode)
-        continue;
-    end
-    
-    test = result.(tcode);   
-    report.(tcode).name = test.name;
-    
-    dfid = 1-test.fidelity';
-    nmeas = test.nmeas';
-    time_proto = test.time_proto';
-    time_est = test.time_est';
-    n = test.nsample;
-    
-    fidbias = mean(test.bias);
-    res_num = get_resources(n,dfid,fidbias,zs,nmeas,time_proto,time_est,opt.quantile);
-    res_text = cell(length(zs),4);
-    for j1 = 1:size(res_text,1)
-        for j2 = 1:size(res_text,2)
-            rn = res_num(j1,j2);
-            if isnan(rn)
-                res_text{j1,j2} = '-';
-            elseif rn == 0
-                res_text{j1,j2} = [le_sign, qtb_num2str(min(n))];
-            elseif isinf(rn)
-                res_text{j1,j2} = [ge_sign, qtb_num2str(max(n))];
-            else
-                res_text{j1,j2} = qtb_num2str(rn);
-            end
-        end
-    end
-    
-    report.(tcode).resources_num = res_num;
-    report.(tcode).resources = table(res_text(:,1),res_text(:,2),res_text(:,3),res_text(:,4),...
-        'VariableNames', {'NSamples','Measurements','ProtocolTime','EstimationTime'},...
-        'RowNames', fnames);
+report.tcode = tcode;
+report.tname = test.name;
+report.percentile = opt.percentile;
+report.error_rates = opt.error_rates;
 
-    outs = isoutlier(dfid,'quartiles',2);
-    report.(tcode).outliers = sum(outs,'all');
-    report.(tcode).bias = fidbias;
-    
-    if opt.plot
-        report.(tcode).figure = figure;
-        dim = strjoin(arrayfun(@num2str,report.dim,'UniformOutput',false),char(215));
-        sgtitle([test.name, ' (dim = ', dim,')']);
+quant = opt.percentile/100;
+errs = opt.error_rates;
+logn = log10(double(test.nsample));
 
-        subplot(2,2,1);
-        grid on; hold on;
-        qtb_plot(n,dfid);
-        set(gca,{'XScale','YScale'},{'log','log'});
-        xlabel('Sample size');
-        ylabel('Infidelity');
-
-        subplot(2,2,2);
-        grid on; hold on;
-        qtb_plot(n,nmeas,'Color',2);
-        set(gca,'XScale','log');
-        xlabel('Sample size');
-        ylabel('Measurement number');
-
-        subplot(2,2,3);
-        grid on; hold on;
-        qtb_plot(n,time_proto,'Color',2);
-        set(gca,'XScale','log');
-        xlabel('Sample size');
-        ylabel('Protocol computation time (sec)');
-
-        subplot(2,2,4);
-        grid on; hold on;
-        qtb_plot(n,time_est,'Color',2);
-        set(gca,'XScale','log');
-        xlabel('Sample size');
-        ylabel('State estimation time (sec)');
-    end
+Nexp = size(test.fidelity,1);
+ind = find(all(~isnan(test.fidelity),2));
+if length(ind) < Nexp
+    warning('QTB:EmptyResults', 'Statistics is incomplete: %d/%d results are empty', Nexp-length(ind), Nexp);
+    Nexp = length(ind);
 end
 
-dir = [fileparts(mfilename('fullpath')),'\Templates\'];
-switch opt.export
-    case 'html'
-        tpl_test_page = fileread([dir,'html_test_page.tpl']);
-        tpl_test_table = fileread([dir,'html_test_table.tpl']);
-        tpl_test_table_row = fileread([dir,'html_test_table_row.tpl']);
-        le_text = '&le;';
-        ge_text = '&ge;';
-        dash_text = '&ndash;';
-    otherwise
-        return;
+r = test.rank;
+
+df_perc = quantile(1-test.fidelity(ind,:), quant, 1);
+df_mean = mean(1-test.fidelity(ind,:), 1);
+nmeas_perc = quantile(test.nmeas(ind,:), quant, 1);
+tproto_perc = quantile(test.time_proto(ind,:), quant, 1);
+test_pec = quantile(test.time_est(ind,:), quant, 1);
+aboxes = qtb_stats.awhiskerbox(1-test.fidelity(ind,:),1);
+
+config = qtb_config();
+report.fields = config.TableFields;
+report.data = zeros(length(errs), config.TableFieldsNum);
+data_str = cell(length(errs), config.TableFieldsNum);
+for j = 1:length(errs)
+    data_row = nan(1,config.TableFieldsNum);
+    data_row_str = cell(1,config.TableFieldsNum);
+    data_row_str(:) = {'-'};
+    if all(df_perc > errs(j))
+        data_row(1) = inf;
+        data_row_str{1} = ['>1e', num2str(max(logn))];
+    elseif all(df_perc < errs(j))
+        data_row(1) = 0;
+        data_row_str{1} = ['<1e', num2str(min(logn))];
+    else
+        lognb = interp1(log10(df_perc),logn,log10(errs(j)));
+        data_row(1) = round(10^lognb);
+        data_row(2) = round(interp1(logn,nmeas_perc,lognb));
+        data_row(3) = interp1(logn,tproto_perc,lognb);
+        data_row(4) = interp1(logn,test_pec,lognb);
+        data_row(5) = qtb_stats.get_bound(data_row(1),report.dim,r,'mean')/(10^interp1(logn,log10(df_mean),lognb));
+        data_row(6) = interp1(logn,sum(aboxes.isout,1)/Nexp,lognb);
+        data_row_str(1:6) = arrayfun(@qtb_tools.num2str, data_row(1:6), 'UniformOutput', false);
+    end
+    data_row(7) = all(test.sm_flag);
+    if data_row(7); data_row_str{7} = 'Y'; else; data_row_str{7} = 'N'; end
+    
+    report.data(j,:) = data_row;
+    data_str(j,:) = data_row_str;
 end
 
-test_codes = fieldnames(report.tests);
-data_tables = cell(1,length(test_codes));
-for j = 1:length(test_codes)
-    tcode = test_codes{j};
-    test = report.(tcode);
-    data_rows = cell(1,length(fnames));
-    for k = 1:length(fnames)
-        data_rows{k} = replace(tpl_test_table_row,...
-            {'%%fidelity%%','%%nsample%%','%%meas_num%%','%%time_proto%%','%%time_est%%'},...
-            [fnames(k),test.resources{k,:}]);
-        data_rows{k} = replace(data_rows{k}, {le_sign,ge_sign,'-'}, {le_text,ge_text,dash_text});
-    end
-    data_tables{j} = replace(tpl_test_table,...
-        {'%%test_name%%', '%%quantile%%', '%%data_rows%%', '%%fidbias%%', '%%outliers%%'},...
-        {test.name, [qtb_num2str((1-opt.quantile)*100),'%'], strjoin(data_rows,'\n'), [qtb_num2str(test.bias*100),'%'], [qtb_num2str(test.outliers*100),'%']});
+data_cols = mat2cell(data_str, length(errs), ones(1,config.TableFieldsNum));
+report.table = table(data_cols{:}, 'VariableNames', report.fields,...
+    'RowNames', arrayfun(@(e) [num2str((1-e)*100),'%'], errs, 'UniformOutput', false));
+
+if opt.plot
+    report.figure = figure;
+    dim = strjoin(arrayfun(@num2str,report.dim,'UniformOutput',false),char(215));
+    sgtitle([test.name, ' (dim = ', dim,')']);
+
+    subplot(2,2,1);
+    grid on; hold on;
+    qtb_plot(test.nsample,1-test.fidelity);
+    set(gca,{'XScale','YScale'},{'log','log'});
+    xlabel('Sample size');
+    ylabel('Infidelity');
+
+    subplot(2,2,2);
+    grid on; hold on;
+    qtb_plot(test.nsample,test.nmeas,'Color',2);
+    set(gca,'XScale','log');
+    xlabel('Sample size');
+    ylabel('Measurement number');
+
+    subplot(2,2,3);
+    grid on; hold on;
+    qtb_plot(test.nsample,test.time_proto,'Color',2);
+    set(gca,'XScale','log');
+    xlabel('Sample size');
+    ylabel('Protocol computation time, s');
+
+    subplot(2,2,4);
+    grid on; hold on;
+    qtb_plot(test.nsample,test.time_est,'Color',2);
+    set(gca,'XScale','log');
+    xlabel('Sample size');
+    ylabel('State estimation time, s');
 end
-data_page = replace(tpl_test_page, {'%%method%%', '%%data_tables%%'}, {report.name, strjoin(data_tables,'\n')});
-dfid = fopen(opt.file, 'wt');
-fprintf(dfid, '%s\n', data_page);
-fclose(dfid);
+
+if ~strcmpi(opt.export, 'none')
+    formats = {'.xls','.xlsx','.csv'};
+    [~,~,ext] = fileparts(opt.export);
+    if any(strcmp(ext,formats))
+        writetable(report.table, opt.export, 'WriteRowNames', true);
+    else
+        warning('QTB:WrongFormat', 'Failed to save file. The following formats are available: %s,', strjoin(formats,', '));
+    end
+end
 
 end
 
-function resources = get_resources(n,df,fidbias,zs,nmeas,time_proto,time_est,quant)
-    df = quantile(df, quant, 2);
-    nmeas = quantile(nmeas, quant, 2);
-    time_proto = quantile(time_proto, quant, 2);
-    time_est = quantile(time_est, quant, 2);
-
-    logn = log10(n);
-    z = -log10(df);
-    zbias = -log10(fidbias);
-    resources = nan(length(zs),4);
-    for j = 1:length(zs)
-        lognz = interp1(z,logn,zs(j));
-        nz = round(10^lognz);
-        if isnan(nz)
-            if all(z > zs(j))
-                resources(j,1) = 0; % 0 is for <=min(n)
-            elseif all(zbias > zs(j))
-                resources(j,1) = inf; % inf is for >=max(n)
-            end
-        else
-            resources(j,1) = nz;
-            resources(j,2) = interp1(logn,nmeas,lognz);
-            resources(j,3) = interp1(logn,time_proto,lognz);
-            resources(j,4) = interp1(logn,time_est,lognz);
-        end
-    end
-end
