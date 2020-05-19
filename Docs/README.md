@@ -1,10 +1,10 @@
 # Documentation
 
-This is the documentation of MATLAB library for the benchmarking of quantum tomography (QT) methods. Installation instructions and basic examples are given at the [**home page**](/).
+This is the documentation of MATLAB library for the benchmarking of quantum tomography (QT) methods. Installation instructions and basic examples are given at the [**home page**](https://github.com/PQCLab/mQTB/).
 
 ## Table of contents
 
-* [**Getting started**](/)
+* [**Getting started**](https://github.com/PQCLab/mQTB/)
 * **Main functions**
   * qtb_startup - prepares library
   * qtb_config - returns library configuration
