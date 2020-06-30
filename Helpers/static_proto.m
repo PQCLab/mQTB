@@ -1,11 +1,5 @@
 function fun_proto = static_proto(proto)
 
-fun_proto = @(jn,ntot) handler(jn,ntot,proto);
-
-end
-
-function measurement = handler(jn, ntot, proto)
-
 mtype = proto.mtype;
 elems = proto.elems;
 if isfield(proto,'ratio')
@@ -13,10 +7,15 @@ if isfield(proto,'ratio')
 else
     ratio = ones(1,length(elems))/length(elems);
 end
-
 cdf = cumsum(ratio/sum(ratio));
-ind = find((jn+1)/ntot <= cdf, 1);
 
+fun_proto = @(jn,ntot) handler(jn,ntot,elems,mtype,cdf);
+
+end
+
+function measurement = handler(jn, ntot, elems, mtype, cdf)
+
+ind = find((jn+1)/ntot <= cdf, 1);
 measurement.(mtype) = elems{ind};
 if ind == length(cdf)
     measurement.nshots = ntot - jn;

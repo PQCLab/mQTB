@@ -1,7 +1,21 @@
-function dm = est_cs(meas,data,dim)
+function fun_est = est_cs(mtype)
 %COMPSENS_ESTIMATOR Compressed sensing estimator
 %   Requires MATLAB library http://cvxr.com/cvx/
 
+if nargin < 1
+    mtype = 'observable';
+end
+
+switch mtype
+    case 'observable'
+        fun_est = @handler_observable;
+    case 'povm'
+        fun_est = @handler_povm;
+end
+
+end
+
+function dm = handler_observable(meas,data,dim)
 Dim = prod(dim);
 
 m = length(data);
@@ -22,6 +36,38 @@ cvx_begin sdp quiet
 cvx_end
 warning('on','CVX:Empty')
 
-dm = dm/trace(dm);
+[U,D] = svd(dm);
+dm = U*(D/trace(D))*U';
 end
 
+function dm = handler_povm(meas,data,dim)
+Dim = prod(dim);
+
+M = cellfun(@(m) m.nshots * m.povm, meas, 'UniformOutput', false);
+M = cat(3, M{:});
+A = reshape(permute(M,[3,2,1]), size(M,3), []);
+
+y = cell2mat(data);
+N = repmat(sum(y,1), size(y,1), 1);
+y = y(:);
+N = N(:);
+
+eps0 = sqrt(sum(y.*(1-y./N)));
+dm = nan(Dim);
+alp = 0;
+while isnan(dm(1,1))
+    eps = eps0*(1+alp);
+    warning('off','CVX:Empty')
+    cvx_begin sdp quiet
+        variable dm(Dim,Dim) complex semidefinite
+        minimize(trace(dm))
+        subject to
+            norm(real(A*vec(dm))-y) <= eps
+    cvx_end
+    warning('on','CVX:Empty')
+    alp = alp + 0.1;
+end
+
+[U,D] = svd(dm);
+dm = U*(D/trace(D))*U';
+end

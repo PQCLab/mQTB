@@ -1,4 +1,10 @@
-function dm = est_ppi(meas,data,dim)
+function fun_est = est_ppi()
+
+fun_est = @handler;
+
+end
+
+function dm = handler(meas,data,dim)
 
 Dim = prod(dim);
 

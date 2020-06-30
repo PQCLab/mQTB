@@ -1,5 +1,10 @@
-function dm = est_frls(meas,data,dim)
+function fun_est = est_frls()
 
+fun_est = @handler;
+
+end
+
+function dm = handler(meas,data,dim)
 Dim = prod(dim);
 
 M = cellfun(@(m) m.povm, meas, 'UniformOutput', false);
@@ -16,7 +21,7 @@ cvx_begin sdp quiet
     minimize( norm(B*vec(dm)-prob) )
 cvx_end
 warning('on','CVX:Empty')
-dm = dm/trace(dm);
 
+[U,D] = svd(dm);
+dm = U*(D/trace(D))*U';
 end
-

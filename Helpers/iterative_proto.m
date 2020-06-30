@@ -4,7 +4,7 @@ fun_proto = @(jn,ntot,meas,data,dim) handler(fun_measset,jn,ntot,meas,data,dim,v
 
 end
 
-function measurement = handler(fun_proto,jn,ntot,meas,varargin)
+function measurement = handler(fun_measset,jn,ntot,meas,varargin)
 
 newiter = false;
 if isempty(meas)
@@ -28,7 +28,7 @@ else
 end
 
 if newiter
-    measset = qtb_tools.call(fun_proto,iter,jn,ntot,meas,varargin{:});
+    measset = qtb_tools.call(fun_measset,iter,jn,ntot,meas,varargin{:});
     if ~iscell(measset)
         measset = {measset};
     end
