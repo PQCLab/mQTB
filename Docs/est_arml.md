@@ -4,21 +4,19 @@ Adequate rank maximum likelihood estimator estimator by POVM measurements result
 [**&#8592; Back to contents**](README.md)
 
 ## Usage
-* `dm = est_arml(meas,data)` returns density matrix by POVM measurement results
+* `fun_est = est_arml()` generates estimator handler
+* `fun_est = est_arml(sl)` specifies significance level
 
 ## <a name="args">Input arguments</a>
 
-### <a name="arg-dim">meas</a>
-_**Data type:**_ cell array
+### <a name="arg-sl">sl</a>
+_**Data type:**_ double
 
-[Measurements array](qtb_analyze.md#meas-arr).
+Significance level for a chi-squared test.
 
-### <a name="arg-dim">data</a>
-_**Data type:**_ cell array
-
-[Data array](#data-arr).
+_**Default:**_ `0.05`
 
 ## <a name="output">Function output</a>
-_**Data type:**_ matrix
+_**Data type:**_ function_handle
 
-Density matrix.
+[Estimator handler](qtb_analyze.md#arg-fun_est).

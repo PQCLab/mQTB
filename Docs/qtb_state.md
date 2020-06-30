@@ -31,7 +31,19 @@ The dimension of a latent space for the `'haar_dm'` quantum state [type](#arg-ty
 
 _**Default:**_ `prod(dim)`
 
-// TODO others
+### <a name="arg-init_err">init_err</a>
+_**Data type:**_ cell array
+
+Parameter generator for the system initialization error
+
+_**Default:**_ `{}`
+
+### <a name="arg-depol">depol</a>
+_**Data type:**_ cell array
+
+Parameter generator for the depolarization noise
+
+_**Default:**_ `{}`
 
 ## <a name="output">Function output</a>
 _**Data type:**_ double

@@ -4,26 +4,19 @@ Compressed sensing estimator by Pauli observable measurements results. Density m
 [**&#8592; Back to contents**](README.md)
 
 ## Usage
-* `dm = est_frls(meas,data,dim)` returns density matrix by POVM measurement results
+* `fun_est = est_frls()` generates estimator handler
+* `fun_est = est_frls(mtype)` specifies measurements type
 
 ## <a name="args">Input arguments</a>
 
-### <a name="arg-dim">meas</a>
-_**Data type:**_ cell array
+### <a name="arg-mtype">mtype</a>
+_**Data type:**_ char
 
-[Measurements array](qtb_analyze.md#meas-arr).
+[Measurements type](qtb_analyze.md#mtype).
 
-### <a name="arg-dim">data</a>
-_**Data type:**_ cell array
-
-[Data array](#data-arr).
-
-### <a name="arg-dim">dim</a>
-_**Data type:**_ vector
-
-[Dimension array](qtb_analyze.md#dim-arr).
+_**Default:**_ `'observable'`
 
 ## <a name="output">Function output</a>
-_**Data type:**_ matrix
+_**Data type:**_ function_handle
 
-Density matrix.
+[Estimator handler](qtb_analyze.md#arg-fun_est).

@@ -40,5 +40,6 @@ _**Data type:**_ structure array
 Output array `proto` describes the measurement protocol:
 * `proto.mtype` - measurements type
 * `proto.elems` - cell array of protocol elements
+* `proto.info` - additional protocol information (if specified for the chosen protocol type)
 
 Let `Mj = proto.elems{j}` be the _j_-th protocol element. For POVM measurements `proto.mtype = 'povm'` and matrix `Mj(:,:,k)` corresponds to _k_-th POVM operator. For observable measurements `proto.mtype = 'observable'` and `Mj` is the observable matrix. For operator measurements `proto.mtype = 'operator'` and `Mj` is the measurement operator matrix.

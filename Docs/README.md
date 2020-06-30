@@ -4,7 +4,7 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
 
 ## Table of contents
 
-* [**Getting started**](https://github.com/PQCLab/mQTB/)
+* [**Getting started**](/README.md)
 * **Main functions**
   * qtb_startup - prepares library
   * qtb_config - returns library configuration
@@ -13,6 +13,7 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
   * [qtb_compare](qtb_compare.md) - compares QT methods banchmarks
   * [qtb_tests](qtb_tests.md) - returns a set of all available tests
 * **Utils**
+  * qtb_result - analysis results class
   * [qtb_state](qtb_state.md) - generates a random quantum state
   * [qtb_proto](qtb_proto.md) - generates a measurement protocol
   * [qtb_plot](qtb_plot.md) - plots statistical data
@@ -21,6 +22,7 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
 * **Helpers**
   * [static_proto](static_proto.md) - generates [protocol handler](qtb_analyze.md#arg-fun_proto) for static (non-adaptive) protocols
   * [iterative_proto](iterative_proto.md) - generates [protocol handler](qtb_analyze.md#arg-fun_proto) for iterative protocols
+  * qn_state_analyze - wrapper for qubit state tomography analysis
 * **QT methods**
   * Protocols
     * [proto_fmub](proto_fmub.md) - factorized mutually unbiased bases measurements
@@ -31,6 +33,6 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
     * [est_ppi](est_ppi.md) - projected pseudo-inversion estimator
     * [est_frls](est_frls.md) - full rank least squares estimator
     * [est_frml](est_frml.md) - full rank maximum likelihood estimator
-    * [est_trml](est_trml.md) - true rank maximum likelihood estimator ([estimator handler](qtb_analyze.md#arg-fun_est))
+    * [est_trml](est_trml.md) - true rank maximum likelihood estimator
     * [est_arml](est_arml.md) - adequate rank maximum likelihood estimator
     * [est_cs](est_cs.md) - compressed sensing estimator

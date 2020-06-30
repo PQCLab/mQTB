@@ -4,26 +4,9 @@ Projected pseudo-inversion estimator by POVM measurements results. Density matri
 [**&#8592; Back to contents**](README.md)
 
 ## Usage
-* `dm = est_ppi(meas,data,dim)` returns density matrix by POVM measurements results
-
-## <a name="args">Input arguments</a>
-
-### <a name="arg-dim">meas</a>
-_**Data type:**_ cell array
-
-[Measurements array](qtb_analyze.md#meas-arr).
-
-### <a name="arg-dim">data</a>
-_**Data type:**_ cell array
-
-[Data array](#data-arr).
-
-### <a name="arg-dim">dim</a>
-_**Data type:**_ vector
-
-[Dimension array](qtb_analyze.md#dim-arr).
+* `fun_est = est_ppi()` generates estimator handler
 
 ## <a name="output">Function output</a>
-_**Data type:**_ matrix
+_**Data type:**_ function_handle
 
-Density matrix.
+[Estimator handler](qtb_analyze.md#arg-fun_est).

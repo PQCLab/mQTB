@@ -4,21 +4,9 @@ Full rank maximum likelihood estimator estimator by POVM measurements results. D
 [**&#8592; Back to contents**](README.md)
 
 ## Usage
-* `dm = est_frml(meas,data)` returns density matrix by POVM measurement results
-
-## <a name="args">Input arguments</a>
-
-### <a name="arg-dim">meas</a>
-_**Data type:**_ cell array
-
-[Measurements array](qtb_analyze.md#meas-arr).
-
-### <a name="arg-dim">data</a>
-_**Data type:**_ cell array
-
-[Data array](#data-arr).
+* `fun_est = est_frml()` generates estimator handler
 
 ## <a name="output">Function output</a>
-_**Data type:**_ matrix
+_**Data type:**_ function_handle
 
-Density matrix.
+[Estimator handler](qtb_analyze.md#arg-fun_est).

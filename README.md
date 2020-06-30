@@ -29,7 +29,7 @@ Some of the implemented QT methods require installing external MATLAB libraries:
 The following code shows a basic example of running analysis for a 2-qubit tomography method on random pure states.
 ``` matlab
 dim = [2,2];
-result = qtb_analyze(proto_fmub(dim), @est_ppi, dim, 'rps');
+result = qtb_analyze(proto_fmub(dim), est_ppi(), dim, 'rps');
 ```
 
 The following code calculates benchmarks using raw data obtained above.

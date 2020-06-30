@@ -6,7 +6,7 @@ Runs the tests to analyze the Quantum Tomography (QT) method.
 ## Usage
 * `result = qtb_abalyze(fun_proto, fun_est, dim)` performs the all-tests analysis of the QT-method specified by function handlers [fun_proto](#arg-fun_proto) and [fun_est](#arg-fun_est) and dimension array [dim](#arg-dim)
 * `result = qtb_abalyze(fun_proto, fun_est, dim, tcode)` specifies the tests to perform by its codename [tcode](#arg-tcode)
-* `result = qtb_abalyze(fun_proto, fun_est, dim, tcode, 'file', 'results.mat')` saves intermediate results in the [file](#arg-file) (recommended)
+* `result = qtb_abalyze(fun_proto, fun_est, dim, tcode, 'file', 'results.mat')` saves intermediate results in the [filename](#arg-filename) (recommended)
 * `result = qtb_abalyze( ___ ,Name,Value)` specifies additional arguments using one or more [Name-Value pairs](#args-nv)
 
 ## <a name="data-arr">Data array</a>
@@ -145,14 +145,21 @@ QT method name that would be displayed in reports.
 
 _**Default:**_ `'Untitled QT-method'`
 
+### max_nsample
+_**Data type:**_ double
+
+Maximum sample size that the method could handle.
+
+_**Default:**_ `inf`
+
 ### display
 _**Data type:**_ logical
 
 Display analysis status in the command window.
 
-_**Default:**_ true
+_**Default:**_ `true`
 
-### <a name="arg-file">file</a>
+### <a name="arg-filename">filename</a>
 _**Data type:**_ char
 
 Path to file where the analysis results would be stored. If the file already exists the program tries to load existing results and update them. Value `'none'` prevent program from saving results in a file.
@@ -170,7 +177,7 @@ Frequency of file saving (available when [file](#arg-file) value is set). For ex
 
 The best practice is to set value to `1000` for very fast QT methods as this would make analysis faster. For slow QT methods it is better to set `1`.
 
-_**Default:**_ 1
+_**Default:**_ `1`
 
 ## <a name="output">Function output</a>
 _**Data type:**_ structure array
