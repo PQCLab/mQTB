@@ -1,17 +1,30 @@
 classdef qtb_stats
+    
+properties (Constant)
+    rng = RandStream('mt19937ar')
+end
+
 %QTB_STATS Define static methods to work with statistics   
 methods(Static)
 
 % Random number generators
-function seed(n)
-    rng(n,'twister');
+function set_state(state)
+    if length(state) > 1
+        qtb_stats.rng.set('State', state);
+    else
+        qtb_stats.rng.reset(state);
+    end
+end
+
+function state = get_state()
+    state = qtb_stats.rng.get('State');
 end
 
 function x = rand(sz)
     if nargin == 0
         sz = 1;
     end
-    x = rand(sz);
+    x = qtb_stats.rng.rand(sz);
 end
 
 function x = randn(sz)

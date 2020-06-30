@@ -1,5 +1,5 @@
 classdef qtb_tools    
-%QTB_TOOLS DEfines static tools methods
+%QTB_TOOLS Defines static tools methods
 methods(Static)
 
 function [f, msg] = isdm(dm, tol)
@@ -57,32 +57,14 @@ function f = isprod(A,dim)
 end
 
 function f = fidelity(a,b)
-    %QTB_FIDELITY Calculates the fidelity of quantum states
-    %   Calculates the fidelity of the states `a` and `b`. If both inputs are
-    %   column-vectors the result is the scalar product. If one of the inputs
-    %   is the density matrix the result is the expectation value for the
-    %   density matrix. If both inputs are density matrices the result is the
-    %   Ulhman's fidelity.
-    if size(a,2) > 1 && size(b,2) > 1
-        a = a / trace(a);
-        b = b / trace(b);
-        [u,d] = eig(a);
-        sd = sqrt(d);
-        A = u*sd*u' * b * u*sd*u';
-        f = real(sum(sqrt(eig(A)))^2);
-        if f > 1 % fix computation inaccuracy
-            f = 2-f;
-        end
-    elseif size(a,2) > 1
-        a = a / trace(a);
-        b = b / sqrt(b'*b);
-        f = abs(b'*a*b);
-    elseif size(b,2) > 1
-        a = a / sqrt(a'*a);
-        b = b / trace(b);
-        f = abs(a'*b*a);
-    else
-        f = abs(a'*b)^2;
+    a = a / trace(a);
+    b = b / trace(b);
+    [u,d] = svd(a);
+    sqa = u*sqrt(d)*u';
+    A = sqa * b * sqa;
+    f = real(sum(sqrt(svd(A)))^2);
+    if f > 1 % fix computation inaccuracy
+        f = 2-f;
     end
 end
 
@@ -96,12 +78,11 @@ function str = num2str(a)
     end
 end
 
-function h = print(str,h)
+function nb = uprint(str, nb)
     if nargin > 1
-        fprintf(repmat('\b',1,h.nbytes));
+        fprintf(repmat('\b',1,nb));
     end
-    h.str = str;
-    h.nbytes = fprintf(str);
+    nb = fprintf(str);
 end
 
 function e = get_member(n,elems,dim)
@@ -172,6 +153,17 @@ function varargout = call(fun,varargin)
     [varargout{:}] = fun(varargin{1:n});
 end
 
+function [val, c] = get_field(c, fname, def_value)
+    for j = 1:length(c)
+        if ischar(c{j}) && strcmpi(c{j}, fname) && j < length(c)
+            val = c{j+1};
+            c([j,j+1]) = [];
+            return;
+        end
+    end
+    val = def_value;
+end
+
 function save_fig(fig, fname)
     ax = fig.CurrentAxes;
     outerpos = ax.OuterPosition;
@@ -194,12 +186,20 @@ function w = principal(H)
     v = abs(diag(v));
     w = u(:,v==max(v));
 end
-function U = randunitary(Dim)
-    [Q,R] = qr(qtb_stats.randn(Dim)+1j*qtb_stats.randn(Dim));
-    r = diag(R);
-    U = Q*diag(r./abs(r));
+function u = randunitary(Dim)
+    [q,r] = qr(qtb_stats.randn(Dim)+1j*qtb_stats.randn(Dim));
+    r = diag(r);
+    u = q*diag(r./abs(r));
 end
-
+function u = complete_basis(u)
+    [d,m] = size(u);
+    if m >= d
+        return;
+    end
+    [q,r] = qr([u, qtb_stats.randn([d,d-m])+1j*qtb_stats.randn([d,d-m])]);
+    r = diag(r);
+    u = q*diag(r./abs(r));
+end
 function povm = vec2povm(v)
     d = size(v,1);
     m = size(v,2);

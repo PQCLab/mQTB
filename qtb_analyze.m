@@ -9,8 +9,9 @@ addRequired(input, 'dim');
 addOptional(input, 'tests', 'all', @(s)(ischar(s) || iscellstr(s)));
 addParameter(input, 'mtype', 'povm');
 addParameter(input, 'name', 'Untitled QT-method');
+addParameter(input, 'max_nsample', inf);
 addParameter(input, 'display', true);
-addParameter(input, 'file', 'none');
+addParameter(input, 'filename', 'none');
 addParameter(input, 'savefreq', 1);
 parse(input, fun_proto, fun_est, dim, varargin{:});
 opt = input.Results;
@@ -19,30 +20,12 @@ if opt.display
     disp('Initialization');
 end
 
-% Load previous data
-rsave = false;
-if ~strcmp(opt.file,'none')
-    rsave = true;
-    if length(opt.file) < 5 || ~strcmpi(opt.file((end-3):end), '.mat')
-        opt.file = [opt.file, '.mat'];
-    end
-    if isfile(opt.file)
-        load(opt.file,'result');
-        if ~isequal(result.dim, opt.dim)
-            error('QTB:DimMismatch', 'Failed to load results file: dimensions mismatch');
-        end
-        fprev = [opt.file, '.asv'];
-        save(fprev, 'result');
-        if opt.display
-            fprintf('Results file loaded with tests:\n%s\nPrevious version available as %s\n', 'TODO', fprev);
-        end
-    end
-end
-result.name = opt.name;
-result.dim = opt.dim;
-result.lib = 'mQTB';
+result = qtb_result(opt.filename, opt.dim, opt.display);
+result.load();
+result.set_name(opt.name);
+result.set_cpu();
 
-% Generate test list
+% Prepare tests
 test_desc = qtb_tests(opt.dim);
 test_codes = opt.tests;
 if ischar(test_codes)
@@ -53,77 +36,61 @@ if ischar(test_codes)
     end
 end
 
-% Prepare tests
 for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
     test = test_desc.(tcode);
-    hash = DataHash(test);
-    if isfield(result,tcode)
-        if strcmp(result.(tcode).hash, hash)
-            continue;
-        else
-            if opt.display
-                warning('QTB:TestFingerprintMismatch', 'Failed to load results for test %s: fingerprint mismatch.\nThese results will be overwritten\n', test.code);
-            end
-        end
-    end
-    test.hash = hash;
-    test.fidelity = nan(test.nexp, length(test.nsample));
-    test.nmeas = zeros(test.nexp, length(test.nsample));
-    test.time_proto = zeros(test.nexp, length(test.nsample));
-    test.time_est = nan(test.nexp, length(test.nsample));
-    test.sm_flag = true;
-    result.(tcode) = test;
+    test.nsample = test.nsample(test.nsample <= opt.max_nsample);
+    result.init_test(tcode, test);
 end
+result.save();
 
 % Perform tests
 stats = qtb_stats;
 tools = qtb_tools;
 for j_test = 1:length(test_codes)
     tcode = test_codes{j_test};
-    test = result.(tcode);
+    test = result.tests.(tcode);
+    
     if opt.display
         fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, test.code);
-        fprintf('Progress: ');
-        h = tools.print('');
+        nb = tools.uprint('');
     end
     
-    for j_exp = 1:test.nexp
-        stats.seed(test.seed+j_exp);
-        dm = qtb_state(opt.dim, test.generator{:});
-        for j_ntot = 1:length(test.nsample)
-            if ~isnan(test.fidelity(j_exp,j_ntot)) % experiment loaded
-                continue;
-            end
-            ntot = test.nsample(j_ntot);
-            if opt.display
-                h = tools.print(sprintf('experiment %d/%d, nsamples = 1e%d', j_exp, test.nexp, round(log10(ntot))), h);
-            end
-            [data,meas,time_proto,sm_flag] = conduct_experiment(dm, ntot, opt.fun_proto, opt.dim, opt.mtype);
-            test.time_proto(j_exp,j_ntot) = time_proto;
-            test.sm_flag = test.sm_flag && sm_flag;
-            
-            tic;
-            dm_est = tools.call(opt.fun_est,meas,data,opt.dim);
-            test.time_est(j_exp,j_ntot) = toc;
-            [f,msg] = tools.isdm(dm_est);
-            if ~f; error('QTB:NotDM', ['Estimator error: ', msg]); end
-            
-            test.fidelity(j_exp,j_ntot) = tools.fidelity(dm, dm_est);
-            test.nmeas(j_exp,j_ntot) = length(meas);
-            result.(tcode) = test;
+    experiments = result.experiments(tcode);
+    for exp_id = 1:length(experiments)
+        experiment = experiments{exp_id};
+        if ~isnan(experiment.fidelity(1)) % experiment results loaded
+            continue;
         end
-        if rsave && (mod(j_exp, opt.savefreq) == 0 || j_exp == test.nexp)
-            save(opt.file, 'result');
+        stats.set_state(test.seed + experiment.exp_num);
+        dm = qtb_state(opt.dim, test.generator{:});
+        state = stats.get_state();
+        for ntot_id = 1:length(test.nsample)
+            ntot = test.nsample(ntot_id);
+            if opt.display
+                nb = tools.uprint(sprintf('Experiment %d/%d, nsamples = 1e%d', experiment.exp_num, test.nexp, round(log10(ntot))), nb);
+            end
+            stats.set_state(state);
+            [data, meas, experiment.time_proto(ntot_id), sm_flag] = conduct_experiment(dm, ntot, opt.fun_proto, opt.dim, opt.mtype);
+            tic;
+            dm_est = tools.call(opt.fun_est, meas, data, opt.dim);
+            experiment.time_est(ntot_id) = toc;
+            [f,msg] = tools.isdm(dm_est);
+            if ~f
+                error('QTB:NotDM', ['Estimator error: ', msg]);
+            end
+            experiment.nmeas(ntot_id) = length(meas);
+            experiment.fidelity(ntot_id) = tools.fidelity(dm, dm_est);
+            experiment.sm_flag = experiment.sm_flag && sm_flag;
+        end
+        result.update(tcode, exp_id, experiment);
+        if mod(exp_id, opt.savefreq) == 0 || experiment.is_last
+            result.save();
         end
     end
     if opt.display
-        tools.print('done\n', h);
+        tools.uprint('Done\n', nb);
     end
-end
-
-if opt.display
-    fprintf('All tests are finished!\n\n');
 end
 
 end
