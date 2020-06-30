@@ -17,6 +17,7 @@ function proto = qtb_proto(type, nsub)
 %
 %Author: PQCLab, 2020
 %Website: https://github.com/PQCLab/QTB
+info = struct();
 switch type
     case 'pauli'
         mtype = 'observable';
@@ -29,9 +30,10 @@ switch type
         mtype = 'povm';
         mub = load('mubs.mat', type);
         mub = mub.(type);
-        elems = cellfun(@(u) qtb_tools.vec2povm(u), reshape(num2cell(mub,[1,2]),1,[]), 'UniformOutput', false);
+        info.vectors = reshape(num2cell(mub,[1,2]),1,[]);
+        elems = cellfun(@(u) qtb_tools.vec2povm(u), info.vectors, 'UniformOutput', false);
     otherwise
-        error('Protocol %s is undefined', type);
+        error('QTB:UnknownProto', 'Protocol %s is undefined', type);
 end
 if nargin > 1 && nsub > 1
     elems = qtb_tools.listkronpower(elems, nsub);
@@ -39,5 +41,8 @@ end
 
 proto.mtype = mtype;
 proto.elems = elems;
+if ~isempty(fieldnames(info))
+    proto.info = info;
+end
 
 end
