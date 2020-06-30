@@ -16,7 +16,8 @@ parse(input, results, tcode, varargin{:});
 opt = input.Results;
 
 results = reshape(results, [], 1);
-for j = 1:length(results)
+idx = 1:length(results);
+for j = idx
     result = results{j};
     if ischar(result)
         if ~isfile(result)
@@ -24,20 +25,20 @@ for j = 1:length(results)
             results{j} = struct();
             continue;
         end
-        load(result,'result');
+        result = qtb_result(result, [], false);
+        result.load();
     end
-    if ~isfield(result,tcode)
-        results{j} = struct();
+    if ~isfield(result.tests, tcode)
+        results{j} = nan;
         continue;
     end
     if ~isempty(opt.names)
-        result.name = opt.names{j};
+        result.set_name(opt.names{j});
     end
-    result.j = j;
     results{j} = result;
 end
-isemp = cellfun(@(c) isempty(fieldnames(c)), results);
-results(isemp) = [];
+isemp = cellfun(@(res) ~isobject(res), results);
+idx(isemp) = [];
 
 dim = results{1}.dim;
 Tests = qtb_tests(dim);
@@ -69,13 +70,13 @@ if makeplt
 end
 config = qtb_config();
 report.fields = config.TableFields;
-report.names = cellfun(@(c) c.name, results, 'UniformOutput', false);
-report.data = zeros(length(results), config.TableFieldsNum);
-data_str = cell(length(results), config.TableFieldsNum);
-for j = 1:length(results)
+report.names = cellfun(@(c) c.name, results(idx), 'UniformOutput', false);
+report.data = zeros(length(idx), config.TableFieldsNum);
+data_str = cell(length(idx), config.TableFieldsNum);
+for j = idx
     result = results{j};
     name = result.name;
-    test = result.(tcode);
+    test = result.tests.(tcode);
     
     Nexp = size(test.fidelity,1);
     ind = find(all(~isnan(test.fidelity),2));
@@ -91,14 +92,14 @@ for j = 1:length(results)
     end
     
     if makeplt
-        clr = t.get_member(result.j,cmp,1);
-        stl = t.get_member(result.j,lst);
+        clr = t.get_member(j,cmp,1);
+        stl = t.get_member(j,lst);
         switch opt.plot
             case 'percentile'
                 dfp = quantile(1-test.fidelity, opt.percentile/100, 1);
                 plot(test.nsample, dfp, stl, 'Color', clr, 'LineWidth', 1.5, 'DisplayName', name);
             case 'stats'
-                qtb_plot(test.nsample, 1-test.fidelity, 'Color', clr, 'DisplayName', name);
+                qtb_plot(test.nsample, 1-test.fidelity, 'Color', clr, 'name', name);
             case 'mean'
                 dfmean = mean(1-test.fidelity, 1);
                 plot(test.nsample, dfmean, stl, 'Color', clr, 'LineWidth', 1.5, 'DisplayName', name);
