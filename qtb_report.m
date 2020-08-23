@@ -57,18 +57,10 @@ for j = 1:length(errs)
     data_row = nan(1,config.TableFieldsNum);
     data_row_str = cell(1,config.TableFieldsNum);
     data_row_str(:) = {'-'};
-    if all(df_perc > errs(j)) % linear extrapolation
-        x1 = logn(end-1);
-        y1 = df_perc(end-1);
-        x2 = logn(end);
-        y2 = df_perc(end);
-        y0 = errs(j);
-        lognb = x1*(y2-y0)/(y2-y1) - x2*(y1-y0)/(y2-y1);
+    if all(df_perc > errs(j)) || all(df_perc < errs(j)) % linear extrapolation
+        lognb = interp1(df_perc, logn, errs(j), 'linear', 'extrap');
         data_row(1) = round(10^lognb);
-        data_row_str{1} = ['* ', qtb_tools.num2str(data_row(1))];
-    elseif all(df_perc < errs(j))
-        data_row(1) = 0;
-        data_row_str{1} = ['<1e', num2str(min(logn))];
+        data_row_str{1} = ['*', qtb_tools.num2str(data_row(1))];
     else
         lognb = interp1(log10(df_perc),logn,log10(errs(j)));
         data_row(1) = round(10^lognb);

@@ -29,6 +29,7 @@ for j = idx
         result.load();
     end
     if ~isfield(result.tests, tcode)
+        warning('QTB:NoTest', 'No test `%s` for file `%s`', tcode, result.filename);
         results{j} = nan;
         continue;
     end
@@ -73,8 +74,9 @@ report.fields = config.TableFields;
 report.names = cellfun(@(c) c.name, results(idx), 'UniformOutput', false);
 report.data = zeros(length(idx), config.TableFieldsNum);
 data_str = cell(length(idx), config.TableFieldsNum);
-for j = idx
-    result = results{j};
+for j = 1:length(idx)
+    idxj = idx(j);
+    result = results{idxj};
     name = result.name;
     test = result.tests.(tcode);
     
@@ -92,8 +94,8 @@ for j = idx
     end
     
     if makeplt
-        clr = t.get_member(j,cmp,1);
-        stl = t.get_member(j,lst);
+        clr = t.get_member(idxj,cmp,1);
+        stl = t.get_member(idxj,lst);
         switch opt.plot
             case 'percentile'
                 dfp = quantile(1-test.fidelity, opt.percentile/100, 1);
