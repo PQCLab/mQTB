@@ -2,12 +2,94 @@ classdef qtb_tools
 %QTB_TOOLS Defines static tools methods
 methods(Static)
 
+function [data, meas, time_proto, sm_flag] = simulate_experiment(dm, ntot, fun_proto, dim, mtype, asymp)
+    if nargin < 6
+        asymp = false;
+    end
+    data = {};
+    meas = {};
+    time_proto = 0;
+    sm_flag = true;
+    jn = 0;
+    while jn < ntot
+        tic;
+        meas_curr = qtb_tools.call(fun_proto, jn, ntot, meas, data, dim);
+        time_proto = time_proto + toc;
+        if ~isfield(meas_curr,'nshots')
+            meas_curr.nshots = 1;
+        end
+        if (jn + meas_curr.nshots) > ntot
+            error('QTB:NShots', 'Number of measurements exceeds available sample size');
+        end
+        sm_flag = sm_flag && all(qtb_tools.isprod(meas_curr.(mtype),dim));
+        data{end+1} = qtb_tools.get_measurement_data(dm, meas_curr, mtype, asymp);
+        meas{end+1} = meas_curr;
+        jn = jn + meas_curr.nshots;
+    end
+end
+
+function data = get_measurement_data(dm, meas_curr, mtype, asymp)
+    tol = 1e-8;
+    switch mtype
+        case 'povm'
+            m = size(meas_curr.povm,3);
+            prob = zeros(m,1);
+            for k = 1:m
+                prob(k) = real(trace(dm*meas_curr.povm(:,:,k)));
+            end
+            extraop = false;
+            probsum = sum(prob);
+            if any(prob < 0)
+                if any(prob < -tol)
+                    error('QTB:ProbNeg', 'Measurement operators are not valid: negative eigenvalues exist');
+                end
+                prob(prob < 0) = 0;
+                probsum = sum(prob);
+            end
+            if probsum > 1+tol
+                error('QTB:ProbGT1', 'Measurement operators are not valid: total probability is greater than 1');
+            end
+            if probsum < 1-tol
+                extraop = true;
+                prob = [prob; 1-probsum];
+            end
+            if asymp
+                clicks = prob*meas_curr.nshots;
+            else
+                clicks = qtb_stats.sample(prob, meas_curr.nshots);
+            end
+            if extraop
+                clicks = clicks(1:(end-1));
+            end
+            data = clicks;
+        case 'operator'
+            meas_curr.povm =  meas_curr.operator;
+            clicks = qtb_tools.get_measurement_data(dm, meas_curr, 'povm', asymp);
+            data = clicks(1);
+        case 'observable'
+            [U,D] = eig(meas_curr.observable);
+            meas_curr.povm = zeros(size(U,1),size(U,1),size(U,2));
+            for k = 1:size(U,2)
+                meas_curr.povm(:,:,k) = U(:,k)*U(:,k)';
+            end
+            clicks = qtb_tools.get_measurement_data(dm, meas_curr, 'povm', asymp);
+            data = clicks'*diag(D)/meas_curr.nshots;
+        otherwise
+            error('Unknown measurement type');
+    end
+end    
+
 function [f, msg] = isdm(dm, tol)
     if nargin < 2
         tol = 1e-8;
     end
     f = false;
 
+    if ~isnumeric(dm) || (size(dm, 1) ~= size(dm, 2))
+        msg = 'Input is not a valid square numeric matrix';
+        return;
+    end
+    
     if norm(dm-dm')>tol
         msg = 'Density matrix should be Hermitian';
         return;
