@@ -18,6 +18,10 @@ end
 function dm = handler_observable(meas,data,dim)
 Dim = prod(dim);
 
+% fake identity operator measurement
+meas{end+1} = struct('observable', eye(Dim), 'nshots', meas{end}.nshots);
+data{end+1} = 1;
+
 m = length(data);
 Pauli = zeros(m,Dim^2);
 N = 0;
