@@ -67,7 +67,7 @@ For ![r<d](https://latex.codecogs.com/svg.latex?r<d) the rank of the output dens
 
 ### <a name="bures">Bures random density matrix</a>
 
-Bures distance between the density matrices ![\rho](https://latex.codecogs.com/svg.latex?\rho) and ![\sigma](https://latex.codecogs.com/svg.latex?\sigma) could be expressed using [fidelity](#TODO) ![d_B=\sqrt{2-2\sqrt{F(\rho,\sigma)}}](https://latex.codecogs.com/svg.latex?F(\rho,\sigma)):
+Bures distance between the density matrices ![\rho](https://latex.codecogs.com/svg.latex?\rho) and ![\sigma](https://latex.codecogs.com/svg.latex?\sigma) could be expressed using [fidelity](qtb_analyze.md#fidelity) ![d_B=\sqrt{2-2\sqrt{F(\rho,\sigma)}}](https://latex.codecogs.com/svg.latex?F(\rho,\sigma)):
 
 ![d_B=\sqrt{2-2\sqrt{F(\rho,\sigma)}}](https://latex.codecogs.com/svg.latex?d_B=\sqrt{2-2\sqrt{F(\rho,\sigma)}})
 

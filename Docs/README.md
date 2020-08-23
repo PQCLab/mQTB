@@ -5,15 +5,17 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
 ## Table of contents
 
 * [**Getting started**](/README.md)
+* [**Tests specification**](tests_specification.md)
 * **Main functions**
   * qtb_startup - prepares library
   * qtb_config - returns library configuration
-  * [qtb_analyze](qtb_analyze.md) - performs analyzis of a QT method
+  * [qtb_analyze](qtb_analyze.md) - performs analyzes of a QT method
   * [qtb_report](qtb_report.md) - reports benchmarks of the QT method
-  * [qtb_compare](qtb_compare.md) - compares QT methods banchmarks
+  * [qtb_compare](qtb_compare.md) - compares QT methods benchmarks
   * [qtb_tests](qtb_tests.md) - returns a set of all available tests
 * **Utils**
   * qtb_result - analysis results class
+  * [qtb_debug](qtb_debug.md) - performs a single run of QT method
   * [qtb_state](qtb_state.md) - generates a random quantum state
   * [qtb_proto](qtb_proto.md) - generates a measurement protocol
   * [qtb_plot](qtb_plot.md) - plots statistical data
@@ -23,7 +25,7 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
   * [static_proto](static_proto.md) - generates [protocol handler](qtb_analyze.md#arg-fun_proto) for static (non-adaptive) protocols
   * [iterative_proto](iterative_proto.md) - generates [protocol handler](qtb_analyze.md#arg-fun_proto) for iterative protocols
   * qn_state_analyze - wrapper for qubit state tomography analysis
-* **QT methods**
+* **QT methods\***
   * Protocols
     * [proto_fmub](proto_fmub.md) - factorized mutually unbiased bases measurements
     * [proto_pauli](proto_fmub.md) - Pauli measurements of qubits
@@ -36,3 +38,5 @@ This is the documentation of MATLAB library for the benchmarking of quantum tomo
     * [est_trml](est_trml.md) - true rank maximum likelihood estimator
     * [est_arml](est_arml.md) - adequate rank maximum likelihood estimator
     * [est_cs](est_cs.md) - compressed sensing estimator
+
+**\* Some other QT methods are not realized in MATLAB but presented in pyQTB library in Python.**

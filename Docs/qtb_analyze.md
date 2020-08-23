@@ -36,6 +36,11 @@ _**Example:**_ `dim = [2,3]` - qubit + qutrit system
 
 Note that it is always preferable to specify partition. E.g. use `dim = [2,2]` instead of `dim = 4` for the two-qubit system.
 
+## <a name="fidelity">Fidelity</a>
+The analysis is based on the computation of fidelity between the true state density matrix ![\rho](https://latex.codecogs.com/svg.latex?\rho) and the estimated state density matrix ![\sigma](https://latex.codecogs.com/svg.latex?\sigma) using Uhlmann's fidelity:
+
+![F=\left(\text{Tr}\sqrt{\sqrt\sigma\rho\sqrt\sigma}\right)^2](https://latex.codecogs.com/svg.latex?F=\left(\text{Tr}\sqrt{\sqrt\sigma\rho\sqrt\sigma}\right)^2)
+
 ## <a name="args">Input arguments</a>
 
 ### <a name="arg-fun_proto">fun_proto</a>
@@ -199,7 +204,7 @@ For every [tcode](#arg-tcode) specified in the function input `test = result.(tc
   * `test.generator` - generator of the random quantum states
   * `test.hash` - unique test fingerprint
 * QT results:
-  * `test.fidelity(j,k)` - fidelity between the true and reconstructed (output of [fun_est](#arg-fun_est) handle) density matrices in _j_-th QT experiment for the sample size `test.nsample(1,k)`
+  * `test.fidelity(j,k)` - [fidelity](#fidelity) between the true and reconstructed (output of [fun_est](#arg-fun_est) handle) density matrices in _j_-th QT experiment for the sample size `test.nsample(1,k)`
   * `test.nmeas(j,k)` - number of measurements (number of [fun_proto](#arg-fun_proto) calls) in _j_-th QT experiment for the sample size `test.nsample(1,k)`
   * `test.time_proto` - total time (in seconds) of protocol computation ([fun_proto](#arg-fun_proto) execution time) in _j_-th QT experiment for the sample size `test.nsample(1,k)`
   * `test.time_est` - time (in seconds) of density matrix estimation ([fun_est](#arg-fun_est) execution time) in _j_-th QT experiment for the sample size `test.nsample(1,k)`
