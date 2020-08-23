@@ -58,7 +58,7 @@ if ~strcmp(proto_mtype, est_mtype)
     error('QTB:ProtoEstIncompatible', 'Protocol %s and estimator %s are incompatible', upper(proto_name), upper(est_name));
 end
 
-[filename, varargin] = qtb_tools.get_field(varargin, 'filename', sprintf('q%d_%s_%s-%s.mat', n, test, proto_name, est_name));
+[filename, varargin] = qtb_tools.get_field(varargin, 'filename', sprintf('q%d_%s-%s.mat', n, proto_name, est_name));
 varargin = [varargin, {'filename', filename}];
 
 [name, varargin] = qtb_tools.get_field(varargin, 'name', [upper(proto_name), '-', upper(est_name)]);
