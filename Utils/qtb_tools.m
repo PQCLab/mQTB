@@ -273,6 +273,7 @@ function u = randunitary(Dim)
     r = diag(r);
     u = q*diag(r./abs(r));
 end
+
 function u = complete_basis(u)
     [d,m] = size(u);
     if m >= d
@@ -282,6 +283,7 @@ function u = complete_basis(u)
     r = diag(r);
     u = q*diag(r./abs(r));
 end
+
 function povm = vec2povm(v)
     d = size(v,1);
     m = size(v,2);
