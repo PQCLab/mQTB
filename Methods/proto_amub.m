@@ -5,7 +5,7 @@ fun_proto = iterative_proto(@get_measset, proto.elems, proto.info.vectors{1}, fu
 
 end
 
-function measset = get_measset(iter,jn,ntot,meas,data,dim,base_proto,phi,fun_est)
+function measset = get_measset(iter, jn, ntot, meas, data, dim, base_proto, phi, fun_est)
 
 proto = base_proto;
 m = length(proto);
@@ -27,7 +27,7 @@ if nleft < sum(nshots)
     nshots(end) = nleft - sum(nshots(1:(end-1)));
 end
 
-measset = cellfun(@(povm,n) struct('povm',povm,'nshots',n), proto, num2cell(nshots), 'UniformOutput', false);
+measset = cellfun(@(povm,n) struct('mtype', 'povm', 'elem', povm, 'nshots',n), proto, num2cell(nshots), 'UniformOutput', false);
 if iter > 1 && jn > 1e4
     measset{end}.dm = dm;
 end

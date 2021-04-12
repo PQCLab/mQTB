@@ -10,6 +10,7 @@ function dm = handler(meas, data)
     else
         init = 'pinv';
     end
-    proto = cellfun(@(m) m.povm, meas, 'UniformOutput', false);
-    dm = rt_dm_reconstruct(data,proto,'Rank','full','init',init);
+    proto = cellfun(@(m) m.elem, meas, 'UniformOutput', false);
+    dim = size(proto{1}, 1);
+    dm = rt_dm_reconstruct(dim, data, proto, 'Rank', 'full', 'init', init);
 end

@@ -15,18 +15,18 @@ end
 
 end
 
-function dm = handler_observable(meas,data,dim)
+function dm = handler_observable(meas, data, dim)
 Dim = prod(dim);
 
 % fake identity operator measurement
-meas{end+1} = struct('observable', eye(Dim), 'nshots', meas{end}.nshots);
+meas{end+1} = struct('elem', eye(Dim), 'nshots', meas{end}.nshots);
 data{end+1} = 1;
 
 m = length(data);
-Pauli = zeros(m,Dim^2);
+Pauli = zeros(m, Dim^2);
 N = 0;
 for j = 1:m
-    Pauli(j,:) = reshape(meas{j}.observable.',1,[]);
+    Pauli(j,:) = reshape(meas{j}.elem.', 1, []);
     N = N + meas{j}.nshots;
 end
 data = cell2mat(data);
@@ -36,7 +36,7 @@ mu = 4*m/sqrt(N);
 warning('off','CVX:Empty')
 cvx_begin sdp quiet
 	variable dm(Dim,Dim) complex semidefinite
-	minimize( 2*mu*trace(dm) + pow_pos(norm(Pauli*vec(dm)-data),2) );
+	minimize( 2*mu*trace(dm) + pow_pos(norm(Pauli*vec(dm) - data), 2) );
 cvx_end
 warning('on','CVX:Empty')
 
@@ -44,10 +44,10 @@ warning('on','CVX:Empty')
 dm = U*(D/trace(D))*U';
 end
 
-function dm = handler_povm(meas,data,dim)
+function dm = handler_povm(meas, data, dim)
 Dim = prod(dim);
 
-M = cellfun(@(m) m.nshots * m.povm, meas, 'UniformOutput', false);
+M = cellfun(@(m) m.nshots * m.elem, meas, 'UniformOutput', false);
 M = cat(3, M{:});
 A = reshape(permute(M,[3,2,1]), size(M,3), []);
 

@@ -62,6 +62,9 @@ classdef qtb_result < handle
         
         function set_cpu(obj, cpu)
             if nargin < 2
+                if ~exist('cpuinfo','file')
+                    return;
+                end
                 cpu = cpuinfo();
                 cpu = cpu.Name;
             end

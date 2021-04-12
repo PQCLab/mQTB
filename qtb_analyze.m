@@ -7,7 +7,6 @@ addRequired(input, 'fun_proto');
 addRequired(input, 'fun_est');
 addRequired(input, 'dim');
 addOptional(input, 'tests', 'all', @(s)(ischar(s) || iscell(s)));
-addParameter(input, 'mtype', 'povm');
 addParameter(input, 'name', 'Untitled QT-method');
 addParameter(input, 'max_nsample', inf);
 addParameter(input, 'display', true);
@@ -73,7 +72,7 @@ for j_test = 1:length(test_desc)
             continue;
         end
         stats.set_state(test.seed + experiment.exp_num);
-        dm = test.state_fun();
+        dm = tools.call(test.fun_state);
         state = stats.get_state();
         for ntot_id = 1:length(test.nsample)
             ntot = test.nsample(ntot_id);
@@ -81,7 +80,7 @@ for j_test = 1:length(test_desc)
                 nb = tools.uprint(sprintf('Experiment %d/%d, nsamples = 1e%d', experiment.exp_num, test.nexp, round(log10(ntot))), nb);
             end
             stats.set_state(state);
-            [data, meas, time_proto, sm_flag] = tools.simulate_experiment(dm, ntot, opt.fun_proto, opt.dim, opt.mtype);
+            [data, meas, time_proto, sm_flag] = tools.simulate_experiment(dm, ntot, opt.fun_proto, test.fun_meas, opt.dim);
             experiment.time_proto(ntot_id) = time_proto;
             tic;
             dm_est = tools.call(opt.fun_est, meas, data, opt.dim);

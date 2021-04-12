@@ -1,4 +1,4 @@
-function info = qtb_debug(fun_proto, fun_est, dim, ntot, varargin)
+function info = qtb_debug(fun_proto, fun_est, dim, ntot, test)
 %QTB_DEBUG Runs a single quantum tomography and returns complete information.
 %Documentation: https://github.com/PQCLab/mQTB/blob/master/Docs/qtb_debug.md
 %Author: Boris Bantysh, 2020
@@ -6,34 +6,18 @@ input = inputParser;
 addRequired(input, 'fun_proto');
 addRequired(input, 'fun_est');
 addRequired(input, 'dim');
-addRequired(input, 'ntot', @(n)(isnumeric(n) && n >= 1 && n == round(n))||isinf(n));
-addOptional(input, 'test', 'none', @(s)ischar(s));
-addParameter(input, 'dm', 'none');
-addParameter(input, 'mtype', 'povm');
-parse(input, fun_proto, fun_est, dim, ntot, varargin{:});
+addRequired(input, 'ntot', @(n)(isnumeric(n) && n >= 1 && n == round(n)) || isinf(n));
+addRequired(input, 'test', @(s)(ischar(s) || isstruct(s)));
+parse(input, fun_proto, fun_est, dim, ntot, test);
 opt = input.Results;
 tools = qtb_tools;
 
-if strcmpi(opt.test, 'none')
-    [f,msg] = tools.isdm(opt.dm);
-    if ~f
-        error('QTB:NotDM', ['Error using `dm` field: ', msg]);
-    end
-    dm = opt.dm;
-else
-    test_desc = qtb_tests(opt.dim);
-    if isfield(test_desc, opt.test)
-        dm = qtb_state(opt.dim, test_desc.(opt.test).generator{:});
-    else
-        error('QTB:UnknownTest', 'Test with test code `%s` does not exists', test);
-    end
+if ischar(opt.test)
+    opt.test = qtb_tests.get_test(opt.test, dim);
 end
 
-asymp = false;
-if isinf(opt.ntot)
-    asymp = true;
-end
-[data, meas, time_proto, sm_flag] = tools.simulate_experiment(dm, opt.ntot, opt.fun_proto, opt.dim, opt.mtype, asymp);
+dm = tools.call(opt.test.fun_state);
+[data, meas, time_proto, sm_flag] = tools.simulate_experiment(dm, opt.ntot, opt.fun_proto, opt.test.fun_meas, opt.dim);
 tic;
 dm_est = tools.call(opt.fun_est, meas, data, opt.dim);
 time_est = toc;
@@ -45,7 +29,6 @@ nmeas = length(meas);
 fidelity = tools.fidelity(dm, dm_est);
 
 info.options = opt;
-info.asymp = asymp;
 info.dm = dm;
 info.meas = meas;
 info.data = data;
