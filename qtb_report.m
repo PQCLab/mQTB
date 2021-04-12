@@ -85,7 +85,7 @@ report.table = table(data_cols{:}, 'VariableNames', report.fields,...
 if opt.plot
     report.figure = figure;
     dim = strjoin(arrayfun(@num2str,report.dim,'UniformOutput',false),char(215));
-    sgtitle([test.name, ' (dim = ', dim,')']);
+    %sgtitle([test.name, ' (dim = ', dim,')']);
 
     subplot(2,2,1);
     grid on; hold on;

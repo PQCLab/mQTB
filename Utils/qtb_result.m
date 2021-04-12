@@ -96,9 +96,10 @@ classdef qtb_result < handle
             end
         end
         
-        function init_test(obj, tcode, test)
+        function init_test(obj, test)
             thash = DataHash(test);
             new_test = true;
+            tcode = test.code;
             if isfield(obj.tests, tcode)
                 if strcmp(obj.tests.(tcode).hash, thash)
                     new_test = false;

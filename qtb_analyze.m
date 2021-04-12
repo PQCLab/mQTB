@@ -6,7 +6,7 @@ input = inputParser;
 addRequired(input, 'fun_proto');
 addRequired(input, 'fun_est');
 addRequired(input, 'dim');
-addOptional(input, 'tests', 'all', @(s)(ischar(s) || iscellstr(s)));
+addOptional(input, 'tests', 'all', @(s)(ischar(s) || iscell(s)));
 addParameter(input, 'mtype', 'povm');
 addParameter(input, 'name', 'Untitled QT-method');
 addParameter(input, 'max_nsample', inf);
@@ -28,31 +28,41 @@ result.set_name(opt.name);
 result.set_cpu();
 
 % Prepare tests
-test_desc = qtb_tests(opt.dim);
 test_codes = opt.tests;
 if ischar(test_codes)
-    if strcmp(test_codes, 'all')
-        test_codes = fieldnames(test_desc);
+    test_codes = {test_codes};
+end
+if ~iscell(test_codes)
+    error('QTB:TestCodes', 'Test codes must be a cell or string');
+end
+test_desc = {};
+default_tests = qtb_tests.get_all_codes();
+for j_test = 1:length(test_codes)
+    if ischar(test_codes{j_test})
+        if strcmp(test_codes{j_test}, 'all')
+            test_desc = horzcat(test_desc, qtb_tests.get_all_tests(opt.dim));
+        else
+            test_desc{end + 1} = qtb_tests.get_test(test_codes{j_test}, opt.dim);
+        end
     else
-        test_codes = {test_codes};
+        test_desc{end + 1} = test_codes{j_test};
     end
 end
 
-for j_test = 1:length(test_codes)
-    tcode = test_codes{j_test};
-    test = test_desc.(tcode);
-    test.nsample = test.nsample(test.nsample <= opt.max_nsample);
-    result.init_test(tcode, test);
+for j_test = 1:length(test_desc)
+    desc = test_desc{j_test};
+    desc.nsample = desc.nsample(desc.nsample <= opt.max_nsample);
+    result.init_test(desc);
 end
 result.save();
 
 % Perform tests
-for j_test = 1:length(test_codes)
-    tcode = test_codes{j_test};
+for j_test = 1:length(test_desc)
+    tcode = test_desc{j_test}.code;
     test = result.tests.(tcode);
     
     if opt.display
-        fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, test.code);
+        fprintf('===> Running test %d/%d: %s (%s)\n', j_test, length(test_codes), test.name, test.title);
         nb = tools.uprint('');
     end
     
@@ -63,7 +73,7 @@ for j_test = 1:length(test_codes)
             continue;
         end
         stats.set_state(test.seed + experiment.exp_num);
-        dm = qtb_state(opt.dim, test.generator{:});
+        dm = test.state_fun();
         state = stats.get_state();
         for ntot_id = 1:length(test.nsample)
             ntot = test.nsample(ntot_id);
